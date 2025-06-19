@@ -1,0 +1,210 @@
+.admin-container {
+  padding: 30px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  min-height: 100vh;
+}
+
+.admin-heading {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 30px;
+  text-align: center;
+  color: #6aa84f;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.05);
+}
+
+.admin-table th,
+.admin-table td {
+  border: 1px solid #ccc;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #333;
+  text-align: left;
+  background-color: #fff;
+}
+
+.admin-table th {
+  background-color: #2c3e50;
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.admin-table tr:nth-child(even) td {
+  background-color: #f9f9f9;
+}
+
+.admin-table tr:hover td {
+  background-color:#9fc5e8;
+  transition: background-color 0.3s ease;
+}
+.queue-section {
+  margin-top: 50px;
+  padding: 20px;
+  background-color: #fdf6e3;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+}
+
+.queue-heading {
+  font-size: 22px;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #333;
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.queue-table th,
+.queue-table td {
+  border: 1px solid #bbb;
+  padding: 10px;
+  text-align: left;
+}
+
+.queue-table th {
+  background-color: #f0f0f0;
+}
+
+.queue-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Login Form Styles */
+.login-container {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  background-color: #fff; /* Added background color */
+}
+
+.login-container h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px; /* Added margin */
+}
+
+.login-container .form-group {
+  margin-bottom: 15px;
+}
+
+.login-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555; /* Added color */
+}
+
+.login-container input[type="email"],
+.login-container input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem; /* Added font size */
+}
+
+.login-container button {
+  width: 100%;
+  padding: 12px;
+  background-color: #5cb85c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.1rem; /* Added font size */
+  transition: background-color 0.3s ease; /* Added transition */
+}
+
+.login-container button:hover {
+  background-color: #4cae4c;
+}
+
+/* General form styles */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Action buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-buttons button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #5cb85c;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.action-buttons button:hover {
+  background-color: #4cae4c;
+}
+
+/* Save message */
+.save-message {
+  background-color: #dff0d8;
+  color: #3c763d;
+  padding: 10px;
+  margin-top: 10px;
+  border: 1px solid #d6e9c6;
+  border-radius: 4px;
+}
+
+/* Filter container */
+.filter-container {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-container label {
+  font-weight: bold;
+}
+
+.filter-container select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}

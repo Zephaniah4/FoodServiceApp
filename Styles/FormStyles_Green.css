@@ -1,0 +1,109 @@
+
+.form-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 0 12px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.form-header img {
+  height: 60px;
+}
+
+.form-header h2 {
+  font-size: 1.6rem;
+  color: #52672b;
+  margin: 0;
+}
+
+h3 {
+  color: #52672b;
+  border-bottom: 2px solid #e0e0e0;
+  margin-top: 2rem;
+  padding-bottom: 0.5rem;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.form-grid input {
+  margin-top: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.language-switcher {
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+.language-switcher select {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.checkboxes-with-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.checkboxes-with-desc label {
+  display: flex;
+  align-items: flex-start;
+  font-size: 0.95rem;
+  gap: 0.5rem;
+}
+
+.checkboxes-with-desc input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-top: 3px;
+}
+
+.sigCanvas {
+  border: 2px dashed #aaa;
+  background: #fdfdfd;
+  margin-top: 0.5rem;
+  border-radius: 8px;
+}
+
+button[type="submit"] {
+  margin-top: 2rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #52672b;
+  color: white;
+  border: none;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+  background-color: #3f511f;
+}
