@@ -38,12 +38,16 @@ export default function RegistrationForm() {
       'children', 'adults', 'seniors', 'agreedToCert'
     ];
 
- for (const field of requiredFields) {
-     if (form[field] === '' || form[field] === null || form[field] === undefined) {
-       alert(t(`Please fill out the required field: ${field}`));
-        return;
-     }
-   }
+for (const field of requiredFields) {
+  if (
+    form[field] === '' ||
+    form[field] === null ||
+    form[field] === undefined
+  ) {
+    alert(t(`Please fill out the required field: ${field}`));
+    return;
+  }
+}
 
     try {
       const signature = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
