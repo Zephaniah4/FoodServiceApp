@@ -17,7 +17,7 @@ export default function RegistrationForm() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', dateOfBirth: '', phone: '', address: '',
     apartment: '', city: '', state: '', zipCode: '', ethnicity: '', sex: '', maritalStatus: '',
-    children: '', adults: '', seniors: '', language: '', countryOfBirth: '',
+    children: '0', adults: '0', seniors: '0', language: '', countryOfBirth: '',
     incomeYear: '', incomeMonth: '', incomeWeek: '',
     snap: false, tanf: false, ssi: false, nsls: false, medicaid: false,
     crisisReason: '', agreedToCert: false
