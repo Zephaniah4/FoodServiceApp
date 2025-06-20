@@ -39,13 +39,11 @@ export default function RegistrationForm() {
     ];
 
 for (const field of requiredFields) {
-  if (form[field] === '' ||
+  if (
+    form[field] === '' ||
     form[field] === null ||
-    form[field] === undefined ||
-    (field === 'children' && form[field] === '') ||
-    (field === 'adults' && form[field] === '') ||
-    (field === 'seniors' && form[field] === ''))
-     {
+    form[field] === undefined
+  ) {
     alert(t(`Please fill out the required field: ${field}`));
     return;
   }
