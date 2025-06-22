@@ -1,0 +1,7 @@
+# Process Journey
+
+When a individual or family arrives at one of the free grocery assistance drive-thru locations, one of the staff directs the driver to the website.  Either the driver would be given a URL and/or QR code to access on their personal device or if needed a tablet [locked down for its sole purpose (Kiosk-Mode)] will be provided to them to access the website.  The website would direct the user to a check-in page.  The check-in page would allow the user to enter data about themselves and their household and sign any forms needed for the operation's reporting.  Once the data and forms are submitted, the driver is checked-in and is added to the driver queue.
+
+After the driver is given access to the website, the driver waits in the line of cars and eventually pulls up to the first stop.  Here the staff verify the driver has checked-in.  The staff can do so by looking up the driver in the driver queue from the website's admin view.  Once the driver is successfully checked-in, the driver then pulls up to the second stop where their vehicle is loaded with groceries.  Finally, the vehicle drives off.
+
+At a later point, the staff iterate through each the driver queue, uploading each driver's data and forms to the nourishment assistance program's website manually (at this time).
