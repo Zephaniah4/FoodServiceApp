@@ -4,7 +4,7 @@ The following outlines the typical process for individuals or families receiving
 
 1. **Arrival and Check-In**  
    When an individual or family arrives at a free grocery assistance drive-thru location, a staff member directs the driver to access the FoodServiceApp website. This can be done by providing a URL or QR code for use on their personal device, or by offering a tablet in kiosk mode if needed.  
-   The website guides the user to a check-in page, where they enter information about themselves and their household, and complete any required forms for reporting purposes. Once submitted, the driver is checked in and added to the driver queue.
+   The website guides the user to a check-in page, where they enter information about themselves and their household, and complete any required forms for reporting purposes. If the driver has previously checked-in, they can find themselves from the driver queue and skip any unnecessary forms.  Once submitted, the driver is checked in and added to the driver queue.
 
 2. **Queue and Verification**  
    After check-in, the driver waits in the line of cars. Upon reaching the first stop, staff verify the driver’s check-in status by referencing the driver queue in the admin view of the website. Once verified, the driver proceeds to the next stop.
