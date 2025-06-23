@@ -529,11 +529,12 @@ function AdminViewer() {
         const link = document.createElement('a');
         const firstName = selectedRegistration.formData?.firstName || 'unknown';
         const lastName = selectedRegistration.formData?.lastName || 'unknown';
+        const registrationId = selectedRegistration.formData?.id || 'unknown-id';
         const submittedDate = selectedRegistration.submittedAt && typeof selectedRegistration.submittedAt.toDate === "function"
           ? selectedRegistration.submittedAt.toDate().toISOString().slice(0, 10)
           : 'unknown-date';
         
-        link.download = `registration-${firstName}-${lastName}-${submittedDate}.png`;
+        link.download = `TEFAP-Registration-${registrationId}-${firstName}-${lastName}-${submittedDate}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
 
