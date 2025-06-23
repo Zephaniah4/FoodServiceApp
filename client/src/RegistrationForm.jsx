@@ -20,7 +20,7 @@ export default function RegistrationForm() {
     children: '0', adults: '0', seniors: '0', language: '', countryOfBirth: '',
     incomeYear: '', incomeMonth: '', incomeWeek: '',
     snap: false, tanf: false, ssi: false, nsls: false, medicaid: false,
-    crisisReason: '', agreedToCert: false
+    crisisReason: '', agreedToCert: false, nameOfProxy: ''
   });
   const [existingRegistration, setExistingRegistration] = useState(null);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
@@ -269,7 +269,7 @@ export default function RegistrationForm() {
       children: '0', adults: '0', seniors: '0', language: '', countryOfBirth: '',
       incomeYear: '', incomeMonth: '', incomeWeek: '',
       snap: false, tanf: false, ssi: false, nsls: false, medicaid: false,
-      crisisReason: '', agreedToCert: false
+      crisisReason: '', agreedToCert: false, nameOfProxy: ''
     });
     sigRef.current.clear();
     setExistingRegistration(null);
@@ -511,6 +511,9 @@ export default function RegistrationForm() {
                 <option value="Divorced">{t('Divorced')}</option>
                 <option value="Widowed">{t('Widowed')}</option>
               </select>
+            </label>
+            <label>{t('nameOfProxy')}
+              <input name="nameOfProxy" value={form.nameOfProxy} onChange={handleChange} />
             </label>
           </div> {/* Close form-grid here */}
         </div>

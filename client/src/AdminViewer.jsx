@@ -599,6 +599,7 @@ function AdminViewer() {
       "ethnicity",
       "sex",
       "maritalStatus",
+      "nameOfProxy",
       "children",
       "adults",
       "seniors",
@@ -886,6 +887,7 @@ function AdminViewer() {
                 <th>Date of Birth</th>
                 <th>Phone</th>
                 <th>Address</th>
+                <th>APT #</th>
                 <th>Picking up for</th>
                 <th>{t('tefap')}</th>
                 <th>Actions</th>
@@ -907,6 +909,7 @@ function AdminViewer() {
                   <td>{reg.formData?.dateOfBirth}</td>
                   <td>{reg.formData?.phone}</td>
                   <td>{reg.formData?.address}</td>
+                  <td>{reg.formData?.apartment || ''}</td>
                   <td>
                     <div style={{ position: 'relative' }}>
                       {!householdEditorOpen[reg.id] ? (
@@ -1332,7 +1335,7 @@ function AdminViewer() {
                     <label>{t('address')}
                       <div className="field-value">{selectedRegistration.formData?.address || 'N/A'}</div>
                     </label>
-                    <label>{t('apartment')}
+                    <label>APT #
                       <div className="field-value">{selectedRegistration.formData?.apartment || 'N/A'}</div>
                     </label>
                     <label>{t('city')}
@@ -1355,6 +1358,9 @@ function AdminViewer() {
                     </label>
                     <label>{t('maritalStatus')}
                       <div className="field-value">{selectedRegistration.formData?.maritalStatus || 'N/A'}</div>
+                    </label>
+                    <label>{t('nameOfProxy')}
+                      <div className="field-value">{selectedRegistration.formData?.nameOfProxy || 'N/A'}</div>
                     </label>
                   </div>
                 </div>

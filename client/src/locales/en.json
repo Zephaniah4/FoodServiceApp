@@ -1,5 +1,5 @@
 {
-  "registerForServices": "Register for Food Services",
+  "registerForServices": "Register for Food Services / TEFAP",
   "language": "Language",
   "personalInfo": "Personal Information",
   "firstName": "First Name",
@@ -17,6 +17,7 @@
   "selectEthnicity": "Select Ethnicity",
   "sex": "Sex",
   "maritalStatus": "Marital Status",
+  "nameOfProxy": "Name of Proxy",
   "household": "Household Details",
   "children": "Children under 18",
   "adults": "Adults under 60",
@@ -83,7 +84,7 @@
   "Widowed": "Widowed",  "tefap": "TEFAP",
   "eligible": "Eligible",  "renewal": {
     "title": "TEFAP Renewal",
-    "subtitle": "TEFAP Registration Renewal",
+    "subtitle": "Registration Renewal",
     "message": "Your information has been pre-filled from your previous registration. Please review and update any information that has changed."
   }
 }

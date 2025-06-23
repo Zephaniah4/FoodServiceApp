@@ -1,5 +1,5 @@
 {
-  "registerForServices": "Registrarse para Servicios de Alimentos",
+  "registerForServices": "Registrarse para Servicios de Alimentos / TEFAP",
   "language": "Idioma",
   "personalInfo": "Información Personal",
   "firstName": "Nombre",
@@ -17,6 +17,7 @@
   "selectEthnicity": "Seleccionar Etnicidad",
   "sex": "Sexo",
   "maritalStatus": "Estado Civil",
+  "nameOfProxy": "Nombre del Apoderado",
   "household": "Detalles del Hogar",
   "children": "Niños menores de 18 años",
   "adults": "Adultos menores de 60 años",
@@ -87,7 +88,7 @@
   "eligible": "Elegible",
   "renewal": {
     "title": "Renovación TEFAP",
-    "subtitle": "Renovación de Registro TEFAP",
+    "subtitle": "Renovación de Registro",
     "message": "Su información ha sido completada automáticamente de su registro anterior. Por favor revise y actualice cualquier información que haya cambiado."
   }
 }
