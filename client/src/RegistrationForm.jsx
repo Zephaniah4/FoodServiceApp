@@ -481,12 +481,12 @@ export default function RegistrationForm() {
             <label>{t('race')}
               <select name="race" value={form.race} onChange={handleChange} required>
                 <option value="">{t('selectRace')}</option>
-                <option value="White">White</option>
-                <option value="Black">Black</option>
-                <option value="Latino">Latino</option>
-                <option value="Asian">Asian</option>
-                <option value="Native">Native</option>
-                <option value="Other">Other</option>
+                <option value="White">{t('White')}</option>
+                <option value="Black">{t('Black')}</option>
+                <option value="Latino">{t('Latino')}</option>
+                <option value="Asian">{t('Asian')}</option>
+                <option value="Native">{t('Native')}</option>
+                <option value="Other">{t('Other')}</option>
               </select>
             </label>
             <label>{t('ethnicity')}
