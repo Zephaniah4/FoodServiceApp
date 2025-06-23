@@ -27,6 +27,42 @@ A: TODO.  This is a balance on easy sign-in vs security.  Remembering passwords 
 **Q: How is the admin access restricted?
 A: TODO.  
 
+**Q: What do I do when the terminal keeps asking me to approve running Microsoft software?
+A: If when a terminal is opened the following text appears:
+"Do you want to run software from this untrusted 
+publisher?
+File C:\Users\Master\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1 is published by
+CN=Microsoft Corporation, O=Microsoft Corporation,       
+L=Redmond, S=Washington, C=US and is not trusted on your 
+ system. Only run scripts from trusted publishers.       
+[V] Never run  [D] Do not run  [R] Run once
+[A] Always run[?] Help (default is "D"):"
+
+Just submit "A"
+
+**Q: What do do if I get an unauthorized security error when running npm?
+A: I get the following error when running "npm" in the terminal:
+"
+npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded. The file C:\Program Files\nodejs\npm.ps1 is not digitally signed. You cannot run this script on the 
+current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at
+https:/go.microsoft.com/fwlink/?LinkID=135170.
+At line:1 char:1
++ npm
++ ~~~
+    + CategoryInfo          : SecurityError: (:) [], PS  
+   SecurityException
+    + FullyQualifiedErrorId : UnauthorizedAccess
+"
+Run "Get-ExecutionPolicy -List"
+Run "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process"
+
+For more info: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies
+
+**Q: npm is alerting me of vulnerabilities.  What do I do?
+A: Run the audit "npm audit"
+Then fix them "npm audit fix --force"
+Verify "npm audit"
+
 ## Usage
 
 **Q: How do users check in at a distribution event?**  
