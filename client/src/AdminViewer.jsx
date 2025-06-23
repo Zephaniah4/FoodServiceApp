@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "./firebase";
-import { collection, onSnapshot, query, orderBy, updateDoc, doc, where, getDocs, limit } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, updateDoc, doc, where, getDocs, limit, deleteDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useTranslation } from 'react-i18next';
 import "./AdminViewer.css";
@@ -218,6 +218,22 @@ function AdminViewer() {
 
   const removeCheckin = async (id) => {
     await updateDoc(doc(db, "checkins", id), { status: "removed" });
+  };
+
+  const deleteCheckin = async (checkinId, checkinName) => {
+    const confirmMessage = `Are you sure you want to permanently delete the check-in for "${checkinName}"?\n\nThis action cannot be undone and will remove the check-in from the database completely.`;
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        await deleteDoc(doc(db, "checkins", checkinId));
+        setSaveMessage("Check-in deleted successfully!");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } catch (error) {
+        console.error("Error deleting check-in:", error);
+        setSaveMessage("Error deleting check-in. Please try again.");
+        setTimeout(() => setSaveMessage(""), 3000);
+      }
+    }
   };
 
   const handleIdChange = (docId, newId) => {
@@ -472,6 +488,22 @@ function AdminViewer() {
     await updateDoc(doc(db, "registrations", regId), { "formData.archived": false });
     setSaveMessage("Registration moved back to queue successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
+  };
+
+  const deleteRegistration = async (regId, regName) => {
+    const confirmMessage = `Are you sure you want to permanently delete the registration for "${regName}"?\n\nThis action cannot be undone and will remove the registration from the database completely.`;
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        await deleteDoc(doc(db, "registrations", regId));
+        setSaveMessage("Registration deleted successfully!");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } catch (error) {
+        console.error("Error deleting registration:", error);
+        setSaveMessage("Error deleting registration. Please try again.");
+        setTimeout(() => setSaveMessage(""), 3000);
+      }
+    }
   };
 
   const viewRegistrationForm = (registration) => {
@@ -1135,6 +1167,13 @@ function AdminViewer() {
                         Save Picking up for
                       </button>
                       <button onClick={() => saveTefap(reg.id)}>Save TEFAP</button>
+                      <button 
+                        onClick={() => deleteRegistration(reg.id, `${reg.formData?.firstName} ${reg.formData?.lastName}`)}
+                        className="delete-button"
+                        style={{ backgroundColor: '#f44336', color: 'white' }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1227,6 +1266,13 @@ function AdminViewer() {
                         <button onClick={() => updateStatus(item.id, "in progress")}>In Progress</button>
                         <button onClick={() => updateStatus(item.id, "served")}>Checked In</button>
                         <button onClick={() => removeCheckin(item.id)}>Serve</button>
+                        <button 
+                          onClick={() => deleteCheckin(item.id, item.name)}
+                          className="delete-button"
+                          style={{ backgroundColor: '#f44336', color: 'white' }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1648,7 +1694,7 @@ function AdminViewer() {
                                     onClick={() => {
                                       const savedSignature = localStorage.getItem(`staffSignature_${user.email}`);
                                       if (savedSignature) {
-                                        handleAdminFieldChange(selectedRegistration.id, 'staffSignature', savedSignature);
+                                        handleAdminFieldChange(regId, 'staffSignature', savedSignature);
                                       }
                                     }}
                                     style={{
