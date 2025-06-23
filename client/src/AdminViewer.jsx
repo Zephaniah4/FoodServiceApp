@@ -1694,7 +1694,7 @@ function AdminViewer() {
                                     onClick={() => {
                                       const savedSignature = localStorage.getItem(`staffSignature_${user.email}`);
                                       if (savedSignature) {
-                                        handleAdminFieldChange(regId, 'staffSignature', savedSignature);
+                                        handleAdminFieldChange(selectedRegistration.id, 'staffSignature', savedSignature);
                                       }
                                     }}
                                     style={{
