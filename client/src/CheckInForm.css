@@ -1,51 +1,91 @@
-/* Custom CSS for CheckInForm */
+/* Modern CheckInForm Styling */
 
 .checkin-container {
-  max-width: 500px; /* Adjust as needed */
-  margin: 20px auto; /* Center the form */
-  padding: 20px;
-  background-color: #f8f8f8;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 550px;
+  margin: 40px auto;
+  padding: 40px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(106, 168, 79, 0.1);
 }
 
 .language-selector {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
+  gap: 8px;
+  align-items: center;
 }
 
-.language-selector label {
-  margin-right: 8px;
+.language-selector select {
+  padding: 8px 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  background: white;
+  color: #2c3e50;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.language-selector select:focus {
+  outline: none;
+  border-color: #6aa84f;
+  box-shadow: 0 0 0 3px rgba(106, 168, 79, 0.1);
 }
 
 .checkin-title {
   text-align: center;
-  color: #388e3c;
-  margin-bottom: 1.5rem;
+  color: #2c5530;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .checkin-methods {
   display: flex;
   justify-content: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
+  background: #f1f5f9;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .checkin-methods button {
-  padding: 0.5rem 1.2rem;
+  padding: 12px 24px;
   border: none;
-  border-radius: 6px;
-  background: #e0e0e0;
-  color: #333;
-  font-weight: 500;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  flex: 1;
+}
+
+.checkin-methods button:hover {
+  background: rgba(106, 168, 79, 0.1);
+  color: #6aa84f;
+  transform: translateY(-1px);
 }
 
 .checkin-methods button.active {
-  background: #388e3c;
-  color: #fff;
+  background: #6aa84f;
+  color: white;
+  box-shadow: 0 4px 12px rgba(106, 168, 79, 0.3);
+  transform: translateY(-1px);
+}
+
+.form-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .form-grid {
@@ -55,50 +95,144 @@
 }
 
 .form-grid label {
-  font-weight: 500;
+  font-weight: 600;
+  color: #374151;
+  font-size: 15px;
+  margin-bottom: 6px;
+  display: block;
 }
 
 .form-grid input {
-  padding: 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1rem;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #374151;
+  background: white;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-grid input:focus {
+  outline: none;
+  border-color: #6aa84f;
+  box-shadow: 0 0 0 4px rgba(106, 168, 79, 0.1);
+  transform: translateY(-1px);
+}
+
+.form-grid input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .submit-button {
-  padding: 0.75rem 1.5rem;
-  background: #388e3c;
-  color: #fff;
+  width: 100%;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #6aa84f 0%, #5a9041 100%);
+  color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(106, 168, 79, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.submit-button:hover {
-  background-color: #3f511f;
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(106, 168, 79, 0.4);
+  background: linear-gradient(135deg, #5a9041 0%, #4a7a35 100%);
 }
 
+.submit-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  background: #9ca3af;
+  box-shadow: none;
+}
+
+/* Loading Animation */
+.submit-button.loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.submit-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Enhanced Alert Styles */
 .alert {
+  padding: 16px 20px;
+  border-radius: 12px;
   margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 6px;
   font-weight: 500;
-  text-align: center;
+  border-left: 4px solid;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-success, .alert.alert-success {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  color: #065f46;
+  border-left-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.alert-warning, .alert.alert-warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #92400e;
+  border-left-color: #f59e0b;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+}
+
+.alert-error, .alert.alert-error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  color: #991b1b;
+  border-left-color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
 }
 
 .alert-no-record {
-  background: #fdecea;
-  color: #a94442;
-  border: 1px solid #f5c6cb;
-}
-
-.alert-success {
-  background: #e6f4ea;
-  color: #256029;
-  border: 1px solid #b7e1cd;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #475569;
+  border-left-color: #64748b;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.15);
 }
 
 .checkin-container .form-grid {
@@ -107,19 +241,61 @@
   gap: 1rem;
 }
 
-/* Responsive Design */
-@media (max-width: 576px) {
-  .checkin-container {
-    max-width: 100%;
-    padding: 15px;
-  }
+/* TEFAP Expiration Warning */
+.tefap-expired-warning {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  color: #991b1b;
+  border-left-color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+  border: 2px solid #fca5a5;
+}
 
+.tefap-expired-warning::before {
+  content: "⚠️ ";
+  font-size: 1.2em;
+  margin-right: 5px;
+}
+
+.tefap-expired-warning button {
+  margin-top: 15px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.tefap-expired-warning button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .checkin-container {
+    margin: 20px;
+    padding: 30px 25px;
+  }
+  
+  .checkin-title {
+    font-size: 28px;
+  }
+  
   .checkin-methods {
     flex-direction: column;
-    align-items: center;
+    gap: 0.5rem;
   }
-
+  
   .checkin-methods button {
-    width: 100%;
+    flex: none;
+  }
+  
+  .submit-button {
+    font-size: 16px;
+    padding: 14px 28px;
   }
 }

@@ -1,17 +1,145 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "./firebase";
-import { collection, onSnapshot, query, orderBy, updateDoc, doc, where, getDocs, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, updateDoc, doc, where, getDocs, Timestamp, limit } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { useTranslation } from 'react-i18next';
 import "./AdminViewer.css";
 import "./FormStyles_Green.css";
+import logo from './ntfb_header_logo_retina.png';
+import DailyTotals from './components/DailyTotals';
+
+// Staff Signature Pad Component
+function StaffSignaturePad({ registrationId, onSave, onCancel }) {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    context.strokeStyle = '#000000';
+    context.lineWidth = 2;
+    context.lineCap = 'round';
+  }, []);
+
+  const startDrawing = (e) => {
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const context = canvas.getContext('2d');
+    
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    context.beginPath();
+    context.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const context = canvas.getContext('2d');
+    
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    context.lineTo(x, y);
+    context.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const saveSignature = () => {
+    const canvas = canvasRef.current;
+    const signatureData = canvas.toDataURL('image/png');
+    onSave(signatureData);
+  };
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <p style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
+        Draw your signature in the box below
+      </p>
+      <canvas
+        ref={canvasRef}
+        width={400}
+        height={150}
+        style={{
+          border: '2px solid #333',
+          backgroundColor: '#fff',
+          cursor: 'crosshair',
+          display: 'block',
+          margin: '0 auto'
+        }}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+      />
+      <div style={{ marginTop: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+        <button
+          onClick={clearCanvas}
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Clear
+        </button>
+        <button
+          onClick={saveSignature}
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Save Signature
+        </button>
+        <button
+          onClick={onCancel}
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            backgroundColor: '#757575',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function AdminViewer() {
+  const { t } = useTranslation();
   const [registrations, setRegistrations] = useState([]);
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editedIds, setEditedIds] = useState({});
   const [editedHouseholds, setEditedHouseholds] = useState({});
-  const [editedQueueHouseholds, setEditedQueueHouseholds] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
   const [queueStatusFilter, setQueueStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("both");
@@ -20,13 +148,17 @@ function AdminViewer() {
   const [endDate, setEndDate] = useState('');
   const [firstNameFilter, setFirstNameFilter] = useState("");
   const [lastNameFilter, setLastNameFilter] = useState("");
-  const [counterDate, setCounterDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [regCount, setRegCount] = useState(0);
-  const [checkinCount, setCheckinCount] = useState(0);
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [selectedRegistration, setSelectedRegistration] = useState(null);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [householdEditorOpen, setHouseholdEditorOpen] = useState({});
+  const [searchResults, setSearchResults] = useState({});
+  const [adminFields, setAdminFields] = useState({});
+  const [showStaffSignaturePad, setShowStaffSignaturePad] = useState(null);
+  const [editedTefap, setEditedTefap] = useState({});
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -96,8 +228,185 @@ function AdminViewer() {
     setEditedHouseholds(prev => ({ ...prev, [docId]: value }));
   };
 
-  const handleQueueHouseholdChange = (docId, value) => {
-    setEditedQueueHouseholds(prev => ({ ...prev, [docId]: value }));
+  const handleTefapChange = (docId, field, value) => {
+    setEditedTefap(prev => ({ 
+      ...prev, 
+      [docId]: { 
+        ...prev[docId], 
+        [field]: value 
+      } 
+    }));
+  };
+
+  // Enhanced household management functions
+  const toggleHouseholdEditor = (regId) => {
+    setHouseholdEditorOpen(prev => ({ ...prev, [regId]: !prev[regId] }));
+  };
+
+  const initializeHouseholdData = (regId, currentHousehold) => {
+    if (!editedHouseholds[regId]) {
+      let householdData = [];
+      try {
+        // Try to parse existing household data if it's JSON
+        if (currentHousehold && typeof currentHousehold === 'string' && currentHousehold.startsWith('[')) {
+          householdData = JSON.parse(currentHousehold);
+        } else if (currentHousehold) {
+          // Convert simple string to array format
+          householdData = [{ type: 'other', value: currentHousehold }];
+        }
+      } catch (e) {
+        // If parsing fails, treat as simple string
+        householdData = currentHousehold ? [{ type: 'other', value: currentHousehold }] : [];
+      }
+      
+      // Ensure we have 6 slots
+      while (householdData.length < 6) {
+        householdData.push({ type: '', value: '' });
+      }
+      
+      setEditedHouseholds(prev => ({ ...prev, [regId]: householdData }));
+    }
+  };
+
+  const updateHouseholdEntry = (regId, index, field, value) => {
+    setEditedHouseholds(prev => {
+      const updated = [...(prev[regId] || [])];
+      if (!updated[index]) updated[index] = { type: '', value: '' };
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, [regId]: updated };
+    });
+  };
+
+  // Admin field management functions
+  const handleAdminFieldChange = (regId, field, value) => {
+    setAdminFields(prev => ({
+      ...prev,
+      [regId]: {
+        ...prev[regId],
+        [field]: value
+      }
+    }));
+  };
+
+  const initializeAdminFields = (regId, registration) => {
+    if (!adminFields[regId]) {
+      const existingAdminData = registration.adminData || {};
+      setAdminFields(prev => ({
+        ...prev,
+        [regId]: {
+          isEligible: existingAdminData.isEligible || false,
+          isIneligible: existingAdminData.isIneligible || false,
+          eligibleBeginMonth: existingAdminData.eligibleBeginMonth || '',
+          eligibleBeginYear: existingAdminData.eligibleBeginYear || '',
+          eligibleEndMonth: existingAdminData.eligibleEndMonth || '',
+          eligibleEndYear: existingAdminData.eligibleEndYear || '',
+          ineligibleBeginMonth: existingAdminData.ineligibleBeginMonth || '',
+          ineligibleBeginYear: existingAdminData.ineligibleBeginYear || '',
+          ineligibleEndMonth: existingAdminData.ineligibleEndMonth || '',
+          ineligibleEndYear: existingAdminData.ineligibleEndYear || '',
+          staffSignature: existingAdminData.staffSignature || '',
+          staffDate: existingAdminData.staffDate || ''
+        }
+      }));
+      
+      // Auto-populate signature from saved admin signature if not already present
+      if (!existingAdminData.staffSignature && user?.email) {
+        loadSavedStaffSignature(regId, user.email);
+      }
+    }
+  };
+
+  // Load saved staff signature for the current admin user
+  const loadSavedStaffSignature = async (regId, adminEmail) => {
+    try {
+      // First, check localStorage for a cached signature
+      const cachedSignature = localStorage.getItem(`staffSignature_${adminEmail}`);
+      if (cachedSignature) {
+        handleAdminFieldChange(regId, 'staffSignature', cachedSignature);
+        return;
+      }
+
+      // If not in cache, look for the most recent signature from this admin user
+      const recentSignatureQuery = query(
+        collection(db, "registrations"),
+        where("adminData.updatedBy", "==", adminEmail),
+        orderBy("adminData.lastUpdated", "desc"),
+        limit(1)
+      );
+      
+      const snapshot = await getDocs(recentSignatureQuery);
+      if (!snapshot.empty) {
+        const mostRecentReg = snapshot.docs[0].data();
+        if (mostRecentReg.adminData?.staffSignature) {
+          // Cache the signature for faster future loading
+          localStorage.setItem(`staffSignature_${adminEmail}`, mostRecentReg.adminData.staffSignature);
+          handleAdminFieldChange(regId, 'staffSignature', mostRecentReg.adminData.staffSignature);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved staff signature:", error);
+    }
+  };
+
+  // Save staff signature to cache when a new one is created
+  const saveStaffSignatureToCache = (signatureData) => {
+    if (user?.email && signatureData) {
+      localStorage.setItem(`staffSignature_${user.email}`, signatureData);
+    }
+  };
+
+  const saveAdminFields = async (regId) => {
+    const fieldsToSave = adminFields[regId];
+    if (!fieldsToSave) return;
+
+    try {
+      await updateDoc(doc(db, "registrations", regId), {
+        "adminData": fieldsToSave,
+        "adminData.lastUpdated": new Date().toISOString(),
+        "adminData.updatedBy": user?.email || 'unknown'
+      });
+      setSaveMessage("Admin fields saved successfully!");
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (error) {
+      console.error("Error saving admin fields:", error);
+      setSaveMessage("Error saving admin fields!");
+      setTimeout(() => setSaveMessage(""), 3000);
+    }
+  };
+
+  const searchRegistrationById = async (searchId) => {
+    if (!searchId) return [];
+    try {
+      const searchQuery = query(
+        collection(db, "registrations"),
+        where("formData.id", "==", searchId)
+      );
+      const snapshot = await getDocs(searchQuery);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        registrationId: doc.data().formData?.id,
+        name: `${doc.data().formData?.firstName || ''} ${doc.data().formData?.lastName || ''}`.trim(),
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.error('Error searching registrations:', error);
+      return [];
+    }
+  };
+
+  const handleRegistrationSearch = async (regId, index, searchId) => {
+    if (searchId.length >= 2) {
+      const results = await searchRegistrationById(searchId);
+      setSearchResults(prev => ({ 
+        ...prev, 
+        [`${regId}-${index}`]: results 
+      }));
+    } else {
+      setSearchResults(prev => ({ 
+        ...prev, 
+        [`${regId}-${index}`]: [] 
+      }));
+    }
   };
 
   const saveId = async (docId, currentId) => {
@@ -110,7 +419,17 @@ function AdminViewer() {
   };
 
   const saveHousehold = async (regDocId, userId, currentValue) => {
-    const newValue = editedHouseholds[regDocId] !== undefined ? editedHouseholds[regDocId] : currentValue || "";
+    let newValue;
+    const editedData = editedHouseholds[regDocId];
+    
+    if (editedData && Array.isArray(editedData)) {
+      // Filter out empty entries and serialize
+      const validEntries = editedData.filter(entry => entry.value && entry.value.trim());
+      newValue = JSON.stringify(validEntries);
+    } else {
+      newValue = editedData !== undefined ? editedData : currentValue || "";
+    }
+
     await updateDoc(doc(db, "registrations", regDocId), {
       "formData.household": newValue
     });
@@ -126,74 +445,114 @@ function AdminViewer() {
     );
     await Promise.all(updates);
 
-    setSaveMessage("Household saved successfully!");
+    setSaveMessage("Picking up for saved successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
   };
 
-  const saveQueueHousehold = async (checkinId, currentValue, userId) => {
-    const newValue = editedQueueHouseholds[checkinId] !== undefined
-      ? editedQueueHouseholds[checkinId]
-      : currentValue;
+  const saveTefap = async (regDocId) => {
+    const tefapData = editedTefap[regDocId];
+    if (!tefapData) return;
 
-    await updateDoc(doc(db, "checkins", checkinId), {
-      household: newValue
+    await updateDoc(doc(db, "registrations", regDocId), {
+      "formData.tefapDate": tefapData.date || ""
     });
 
-    const regQuery = query(
-      collection(db, "registrations"),
-      where("formData.id", "==", userId)
-    );
-    const regSnapshot = await getDocs(regQuery);
-    if (!regSnapshot.empty) {
-      const regDocId = regSnapshot.docs[0].id;
-      await updateDoc(doc(db, "registrations", regDocId), {
-        "formData.household": newValue
-      });
-    }
-
-    setSaveMessage("Household saved successfully!");
+    setSaveMessage("TEFAP data saved successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
   };
+
 
   const archiveRegistration = async (regId) => {
     await updateDoc(doc(db, "registrations", regId), { "formData.archived": true });
-    setSaveMessage("Registration archived successfully!");
+    setSaveMessage("Registration marked as served successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
   };
 
   const unarchiveRegistration = async (regId) => {
     await updateDoc(doc(db, "registrations", regId), { "formData.archived": false });
-    setSaveMessage("Registration unarchived successfully!");
+    setSaveMessage("Registration moved back to queue successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
   };
 
-  useEffect(() => {
-    const fetchCounts = async () => {
-      const year = Number(counterDate.slice(0, 4));
-      const month = Number(counterDate.slice(5, 7)) - 1;
-      const day = Number(counterDate.slice(8, 10));
-      const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-      const end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+  const viewRegistrationForm = (registration) => {
+    setSelectedRegistration(registration);
+    setShowFormModal(true);
+    initializeAdminFields(registration.id, registration);
+  };
 
-      const regQuery = query(
-        collection(db, "registrations"),
-        where("submittedAt", ">=", Timestamp.fromDate(start)),
-        where("submittedAt", "<=", Timestamp.fromDate(end))
-      );
-      const regSnap = await getDocs(regQuery);
-      setRegCount(regSnap.size);
+  const closeFormModal = () => {
+    setShowFormModal(false);
+    setSelectedRegistration(null);
+  };
 
-      const checkinQuery = query(
-        collection(db, "checkins"),
-        where("checkInTime", ">=", Timestamp.fromDate(start)),
-        where("checkInTime", "<=", Timestamp.fromDate(end))
-      );
-      const checkinSnap = await getDocs(checkinQuery);
-      setCheckinCount(checkinSnap.size);
-    };
+  const downloadFormAsImage = async () => {
+    try {
+      // Dynamic import to avoid bundling issues
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const element = document.getElementById('form-modal-content');
+      if (element) {
+        // Show a loading state
+        const downloadBtn = document.querySelector('.download-button');
+        const originalText = downloadBtn.textContent;
+        downloadBtn.textContent = 'Generating...';
+        downloadBtn.disabled = true;
 
-    fetchCounts();
-  }, [counterDate]);
+        // More robust way to find and hide admin buttons
+        const allButtons = element.querySelectorAll('button');
+        const buttonsToHide = [];
+        allButtons.forEach(btn => {
+          const text = btn.textContent.trim();
+          if (text === 'Re-sign' || text === 'Clear' || text === 'Use My Saved Signature' || text === 'Save Admin Fields') {
+            buttonsToHide.push({
+              element: btn,
+              originalDisplay: btn.style.display
+            });
+            btn.style.display = 'none';
+          }
+        });
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: element.scrollWidth,
+          height: element.scrollHeight
+        });
+        
+        // Restore admin controls visibility
+        buttonsToHide.forEach(({ element, originalDisplay }) => {
+          element.style.display = originalDisplay;
+        });
+        
+        const link = document.createElement('a');
+        const firstName = selectedRegistration.formData?.firstName || 'unknown';
+        const lastName = selectedRegistration.formData?.lastName || 'unknown';
+        const submittedDate = selectedRegistration.submittedAt && typeof selectedRegistration.submittedAt.toDate === "function"
+          ? selectedRegistration.submittedAt.toDate().toISOString().slice(0, 10)
+          : 'unknown-date';
+        
+        link.download = `registration-${firstName}-${lastName}-${submittedDate}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        // Reset button state
+        downloadBtn.textContent = originalText;
+        downloadBtn.disabled = false;
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+      alert('Error generating image. Please try again.');
+      
+      // Reset button state
+      const downloadBtn = document.querySelector('.download-button');
+      if (downloadBtn) {
+        downloadBtn.textContent = 'Download as Image';
+        downloadBtn.disabled = false;
+      }
+    }
+  };
 
   // --- EXPORT LOGIC STARTS HERE ---
   function getRegistrationsInDateRange() {
@@ -235,6 +594,7 @@ function AdminViewer() {
       "city",
       "state",
       "zipCode",
+      "race",
       "ethnicity",
       "sex",
       "maritalStatus",
@@ -255,6 +615,20 @@ function AdminViewer() {
       "agreedToCert",
       "lastCheckIn",
       "submittedAt",
+      // Admin fields
+      "adminIsEligible",
+      "adminIsIneligible",
+      "adminEligibleBeginMonth",
+      "adminEligibleBeginYear", 
+      "adminEligibleEndMonth",
+      "adminEligibleEndYear",
+      "adminIneligibleBeginMonth",
+      "adminIneligibleBeginYear",
+      "adminIneligibleEndMonth", 
+      "adminIneligibleEndYear",
+      "adminStaffSignature",
+      "adminStaffDate",
+      "tefapDate",
       
       // ... add all other keys in your desired order ...
     ];
@@ -268,6 +642,25 @@ function AdminViewer() {
         ? reg.submittedAt.toDate().toLocaleString()
         : "";
       flat.id = reg.id || "";
+      
+      // Add admin fields
+      const adminData = reg.adminData || {};
+      flat.adminIsEligible = adminData.isEligible ? "Yes" : "No";
+      flat.adminIsIneligible = adminData.isIneligible ? "Yes" : "No";
+      flat.adminEligibleBeginMonth = adminData.eligibleBeginMonth || "";
+      flat.adminEligibleBeginYear = adminData.eligibleBeginYear || "";
+      flat.adminEligibleEndMonth = adminData.eligibleEndMonth || "";
+      flat.adminEligibleEndYear = adminData.eligibleEndYear || "";
+      flat.adminIneligibleBeginMonth = adminData.ineligibleBeginMonth || "";
+      flat.adminIneligibleBeginYear = adminData.ineligibleBeginYear || "";
+      flat.adminIneligibleEndMonth = adminData.ineligibleEndMonth || "";
+      flat.adminIneligibleEndYear = adminData.ineligibleEndYear || "";
+      flat.adminStaffSignature = adminData.staffSignature || "";
+      flat.adminStaffDate = adminData.staffDate || "";
+      
+      // TEFAP fields
+      flat.tefapDate = flat.tefapDate || "";
+      
       allKeys.forEach(key => {
         if (!(key in flat)) flat[key] = "";
       });
@@ -288,7 +681,7 @@ function AdminViewer() {
   };
   // --- EXPORT LOGIC ENDS HERE ---
 
-  // Helper for archived queue
+  // Helper for served queue
   const archivedQueueFiltered = queue.filter(item => {
     if (item.status !== "removed") return false;
     const firstNameMatch = item.name
@@ -374,25 +767,18 @@ function AdminViewer() {
   }
 
   return (
-    <div className="admin-viewer-container">
-      {/* Logout Button */}
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
-        <button
-          onClick={handleLogout}
-          style={{
-            fontSize: "1.5rem", /* Increased by 50% */
-            padding: "0.75rem 1.5rem", /* Adjusted padding */
-          }}
-        >
-          Logout
-        </button>
+    <div className="admin-viewer-container" style={{ position: 'relative' }}>
+      {/* Daily Totals Component - Top Right */}
+      <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 100 }}>
+        <DailyTotals />
       </div>
-      {/* Top bar: Counter on right, controls on left */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
-        {/* Controls on the left */}
-        <div>
+      
+      {/* Top bar: Controls in horizontal layout */}
+      <div style={{ marginBottom: "2rem" }}>
+        {/* Top row with view modes and logout button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           {/* View mode toggles */}
-          <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div style={{ display: "flex", gap: "1rem" }}>
             <label>
               <input
                 type="radio"
@@ -421,6 +807,18 @@ function AdminViewer() {
               Live Check-In Queue Only
             </label>
           </div>
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="logout-button nav-logout"
+          >
+            Logout
+          </button>
+        </div>
+        
+        {/* Controls section */}
+        <div style={{ marginBottom: "1.5rem" }}>
           {/* Archive toggle */}
           <div style={{ marginBottom: "1rem" }}>
             <label>
@@ -430,10 +828,10 @@ function AdminViewer() {
                 onChange={() => setShowArchived(!showArchived)}
                 style={{ marginRight: "0.5rem" }}
               />
-              Show Archived
+              Show Served
             </label>
           </div>
-          {/* Filters only when archive is checked */}
+          {/* Filters only when served is checked */}
           {showArchived && (
             <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
               <input
@@ -461,33 +859,13 @@ function AdminViewer() {
             </div>
           )}
         </div>
-        {/* Counter on the right */}
-        <div>
-          <div className="counter-stats">
-            <h2 style={{ margin: "0 0 0.5rem 0", fontSize: "1.3rem", color: "#388e3c" }}>Daily Totals</h2>
-            <input
-              type="date"
-              value={counterDate}
-              onChange={e => setCounterDate(e.target.value)}
-              className="counter-date"
-            />
-            <div className="counter-value">
-              <span>Registrations</span>
-              <strong>{regCount}</strong>
-            </div>
-            <div className="counter-value">
-              <span>Live Check-Ins</span>
-              <strong>{checkinCount}</strong>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Only show the registrations table if viewMode is "both" or "registrations" */}
       {(viewMode === "both" || viewMode === "registrations") && (
         <>
           {showArchived ? (
-            <h2 className="admin-heading" style={{ textAlign: "center" }}>Archived Registrations</h2>
+            <h2 className="admin-heading" style={{ textAlign: "center" }}>Served Registrations</h2>
           ) : (
             <h2 className="admin-heading" style={{ textAlign: "center" }}>Registrations Queue</h2>
           )}
@@ -506,9 +884,9 @@ function AdminViewer() {
                 <th>ID</th>
                 <th>Date of Birth</th>
                 <th>Phone</th>
-                <th>Zip Code</th>
-                <th>Submitted At</th>
-                <th>Household</th>
+                <th>Address</th>
+                <th>Picking up for</th>
+                <th>{t('tefap')}</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -527,30 +905,232 @@ function AdminViewer() {
                   </td>
                   <td>{reg.formData?.dateOfBirth}</td>
                   <td>{reg.formData?.phone}</td>
-                  <td>{reg.formData?.zipCode}</td>
+                  <td>{reg.formData?.address}</td>
                   <td>
-                    {reg.submittedAt && typeof reg.submittedAt.toDate === "function"
-                      ? reg.submittedAt.toDate().toLocaleString()
-                      : ""}
+                    <div style={{ position: 'relative' }}>
+                      {!householdEditorOpen[reg.id] ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <input
+                            value={(() => {
+                              const edited = editedHouseholds[reg.id];
+                              if (Array.isArray(edited)) {
+                                const validEntries = edited.filter(e => e.value && e.value.trim());
+                                return validEntries.length > 0 
+                                  ? `${validEntries.length} entries` 
+                                  : '';
+                              }
+                              return edited !== undefined ? edited : reg.formData?.household || "";
+                            })()}
+                            onChange={e => handleHouseholdChange(reg.id, e.target.value)}
+                            style={{ width: "80px", fontSize: "12px" }}
+                            placeholder="Click +"
+                            readOnly={Array.isArray(editedHouseholds[reg.id])}
+                          />
+                          <button 
+                            onClick={() => {
+                              initializeHouseholdData(reg.id, reg.formData?.household);
+                              toggleHouseholdEditor(reg.id);
+                            }}
+                            style={{ 
+                              padding: '2px 6px', 
+                              fontSize: '12px',
+                              backgroundColor: '#4CAF50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div 
+                            style={{
+                              position: 'fixed',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              backgroundColor: 'rgba(0,0,0,0.3)',
+                              zIndex: 9998
+                            }}
+                            onClick={() => toggleHouseholdEditor(reg.id)}
+                          />
+                          <div style={{ 
+                            position: 'fixed',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: 9999,
+                            backgroundColor: 'white',
+                            border: '2px solid #ccc',
+                            borderRadius: '5px',
+                            padding: '15px',
+                            minWidth: '400px',
+                            maxWidth: '500px',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                            maxHeight: '80vh',
+                            overflowY: 'auto'
+                          }}>
+                          <div style={{ marginBottom: '10px', fontWeight: 'bold', fontSize: '14px' }}>
+                            Picking up for:
+                          </div>
+                          {[...Array(6)].map((_, index) => {
+                            const entry = editedHouseholds[reg.id]?.[index] || { type: '', value: '' };
+                            const searchKey = `${reg.id}-${index}`;
+                            const currentResults = searchResults[searchKey] || [];
+                            
+                            return (
+                              <div key={index} style={{ marginBottom: '8px', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                <select
+                                  value={entry.type}
+                                  onChange={(e) => updateHouseholdEntry(reg.id, index, 'type', e.target.value)}
+                                  style={{ width: '80px', fontSize: '12px' }}
+                                >
+                                  <option value="">Select</option>
+                                  <option value="registration">Reg ID</option>
+                                  <option value="other">Other</option>
+                                </select>
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                  <input
+                                    type="text"
+                                    value={entry.value}
+                                    onChange={(e) => {
+                                      updateHouseholdEntry(reg.id, index, 'value', e.target.value);
+                                      if (entry.type === 'registration') {
+                                        handleRegistrationSearch(reg.id, index, e.target.value);
+                                      }
+                                    }}
+                                    placeholder={entry.type === 'registration' ? 'Enter Reg ID' : 'Enter name/description'}
+                                    style={{ width: '100%', fontSize: '12px' }}
+                                  />
+                                  {entry.type === 'registration' && currentResults.length > 0 && (
+                                    <div style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      left: 0,
+                                      right: 0,
+                                      backgroundColor: 'white',
+                                      border: '1px solid #ccc',
+                                      borderRadius: '3px',
+                                      maxHeight: '120px',
+                                      overflowY: 'auto',
+                                      zIndex: 1001
+                                    }}>
+                                      {currentResults.map((result, resultIndex) => (
+                                        <div
+                                          key={resultIndex}
+                                          onClick={() => {
+                                            updateHouseholdEntry(reg.id, index, 'value', result.registrationId);
+                                            setSearchResults(prev => ({ ...prev, [searchKey]: [] }));
+                                          }}
+                                          style={{
+                                            padding: '5px',
+                                            cursor: 'pointer',
+                                            borderBottom: resultIndex < currentResults.length - 1 ? '1px solid #eee' : 'none',
+                                            fontSize: '12px',
+                                            backgroundColor: 'white'
+                                          }}
+                                          onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+                                          onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                                        >
+                                          <div><strong>{result.registrationId}</strong></div>
+                                          <div style={{ color: '#666' }}>{result.name}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                {entry.value && (
+                                  <button
+                                    onClick={() => updateHouseholdEntry(reg.id, index, 'value', '')}
+                                    style={{
+                                      padding: '2px 5px',
+                                      fontSize: '10px',
+                                      backgroundColor: '#f44336',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '2px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
+                            <button
+                              onClick={() => toggleHouseholdEditor(reg.id)}
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '12px',
+                                backgroundColor: '#2196F3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '3px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Done
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditedHouseholds(prev => ({ ...prev, [reg.id]: undefined }));
+                                toggleHouseholdEditor(reg.id);
+                              }}
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '12px',
+                                backgroundColor: '#757575',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '3px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                        </>
+                      )}
+                    </div>
                   </td>
                   <td>
-                    <input
-                      value={editedHouseholds[reg.id] !== undefined ? editedHouseholds[reg.id] : reg.formData?.household || ""}
-                      onChange={e => handleHouseholdChange(reg.id, e.target.value)}
-                      style={{ width: "100px" }}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '120px' }}>
+                      <input
+                        type="date"
+                        value={editedTefap[reg.id]?.date || reg.formData?.tefapDate || ''}
+                        onChange={e => handleTefapChange(reg.id, 'date', e.target.value)}
+                        style={{ 
+                          fontSize: '12px', 
+                          width: '100%', 
+                          backgroundColor: '#fffacd',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          padding: '4px'
+                        }}
+                        placeholder="Date"
+                      />
+                    </div>
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
-                      <button onClick={() => saveHousehold(reg.id, reg.formData?.id, editedHouseholds[reg.id] ?? reg.formData?.household)}>
-                        Save Household
-                      </button>
                       {showArchived ? (
                         <button onClick={() => unarchiveRegistration(reg.id)}>Queue</button>
                       ) : (
-                        <button onClick={() => archiveRegistration(reg.id)}>Archive</button>
+                        <button onClick={() => archiveRegistration(reg.id)}>Served</button>
                       )}
+                      <button onClick={() => viewRegistrationForm(reg)}>View Form</button>
+                      <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
+                      <button onClick={() => saveHousehold(reg.id, reg.formData?.id, editedHouseholds[reg.id] ?? reg.formData?.household)}>
+                        Save Picking up for
+                      </button>
+                      <button onClick={() => saveTefap(reg.id)}>Save TEFAP</button>
                     </div>
                   </td>
                 </tr>
@@ -558,8 +1138,18 @@ function AdminViewer() {
             </tbody>
           </table>
           {saveMessage && (
-            <div className="save-message">
-              {saveMessage}
+            <div className="save-message-overlay" onClick={() => setSaveMessage("")}>
+              <div className="save-message" onClick={(e) => e.stopPropagation()}>
+                <button 
+                  className="save-message-close" 
+                  onClick={() => setSaveMessage("")}
+                  aria-label="Close message"
+                >
+                  ×
+                </button>
+                {saveMessage}
+                <div className="save-message-hint">Click anywhere to dismiss</div>
+              </div>
             </div>
           )}
         </>
@@ -575,7 +1165,7 @@ function AdminViewer() {
               <option value="all">All</option>
               <option value="waiting">Waiting</option>
               <option value="in progress">In Progress</option>
-              <option value="served">Served</option>
+              <option value="served">Checked In</option>
             </select>
           </div>
           {viewMode !== "registrations" && (
@@ -586,9 +1176,9 @@ function AdminViewer() {
                   <th>Name</th>
                   <th>Check-In Time</th>
                   <th>Status</th>
-                  <th>Actions</th>
                   <th>Position</th>
-                  <th>Household</th>
+                  <th>Picking up for</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -602,26 +1192,37 @@ function AdminViewer() {
                         : ""}
                     </td>
                     <td>{item.status}</td>
+                    <td>{item.status === "waiting" ? idx + 1 : "-"}</td>
+                    <td>
+                      <div style={{ fontSize: '12px', maxWidth: '150px' }}>
+                        {(() => {
+                          try {
+                            // Try to parse as JSON array first
+                            if (item.household && typeof item.household === 'string' && item.household.startsWith('[')) {
+                              const householdData = JSON.parse(item.household);
+                              return householdData.map((entry, index) => (
+                                <div key={index} style={{ marginBottom: '2px', padding: '1px 3px', backgroundColor: '#f5f5f5', borderRadius: '2px', fontSize: '11px' }}>
+                                  <span style={{ fontWeight: 'bold', color: entry.type === 'registration' ? '#2196F3' : '#FF9800' }}>
+                                    {entry.type === 'registration' ? 'ID:' : 'Other:'}
+                                  </span> {entry.value}
+                                </div>
+                              ));
+                            } else {
+                              // Display as simple string
+                              return item.household || '';
+                            }
+                          } catch (e) {
+                            // If parsing fails, display as simple string
+                            return item.household || '';
+                          }
+                        })()}
+                      </div>
+                    </td>
                     <td>
                       <div className="action-buttons">
                         <button onClick={() => updateStatus(item.id, "in progress")}>In Progress</button>
-                        <button onClick={() => updateStatus(item.id, "served")}>Served</button>
-                        <button onClick={() => removeCheckin(item.id)}>Remove</button>
-                      </div>
-                    </td>
-                    <td>{item.status === "waiting" ? idx + 1 : "-"}</td>
-                    <td>
-                      <input
-                        value={editedQueueHouseholds[item.id] !== undefined ? editedQueueHouseholds[item.id] : item.household || ""}
-                        onChange={e => handleQueueHouseholdChange(item.id, e.target.value)}
-                        style={{ width: "100px" }}
-                      />
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button onClick={() => saveQueueHousehold(item.id, item.household, item.userId)}>
-                          Save Household
-                        </button>
+                        <button onClick={() => updateStatus(item.id, "served")}>Checked In</button>
+                        <button onClick={() => removeCheckin(item.id)}>Serve</button>
                       </div>
                     </td>
                   </tr>
@@ -632,10 +1233,10 @@ function AdminViewer() {
         </>
       )}
 
-      {/* Archived Live Check-In Queue Table */}
+      {/* Checked In Live Check-In Queue Table */}
       {(viewMode === "both" || viewMode === "queue") && showArchived && (
         <>
-          <h2 className="admin-heading">Archived Live Check-In Queue</h2>
+          <h2 className="admin-heading">Checked In Live Queue</h2>
           <table className="admin-table">
             <thead>
               <tr>
@@ -643,7 +1244,7 @@ function AdminViewer() {
                 <th>Name</th>
                 <th>Check-In Time</th>
                 <th>Status</th>
-                <th>Household</th>
+                <th>Picking up for</th>
               </tr>
             </thead>
             <tbody>
@@ -657,7 +1258,31 @@ function AdminViewer() {
                       : ""}
                   </td>
                   <td>{item.status}</td>
-                  <td>{item.household}</td>
+                  <td>
+                    <div style={{ fontSize: '12px', maxWidth: '150px' }}>
+                      {(() => {
+                        try {
+                          // Try to parse as JSON array first
+                          if (item.household && typeof item.household === 'string' && item.household.startsWith('[')) {
+                            const householdData = JSON.parse(item.household);
+                            return householdData.map((entry, index) => (
+                              <div key={index} style={{ marginBottom: '2px', padding: '1px 3px', backgroundColor: '#f5f5f5', borderRadius: '2px', fontSize: '11px' }}>
+                                <span style={{ fontWeight: 'bold', color: entry.type === 'registration' ? '#2196F3' : '#FF9800' }}>
+                                  {entry.type === 'registration' ? 'ID:' : 'Other:'}
+                                </span> {entry.value}
+                              </div>
+                            ));
+                          } else {
+                            // Display as simple string
+                            return item.household || '';
+                          }
+                        } catch (e) {
+                          // If parsing fails, display as simple string
+                          return item.household || '';
+                        }
+                      })()}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -665,7 +1290,483 @@ function AdminViewer() {
         </>
       )}
 
-      {/* Test PDF Export Button - For development only */}
+      {/* Registration Form Modal */}
+      {showFormModal && selectedRegistration && (
+        <div className="modal-overlay" onClick={closeFormModal}>
+          <div className="modal-content form-style-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Registration Form Details</h2>
+              <div className="modal-actions">
+                <button className="download-button" onClick={downloadFormAsImage}>Download as Image</button>
+                <button className="close-button" onClick={closeFormModal}>×</button>
+              </div>
+            </div>
+            <div className="modal-body" id="form-modal-content">
+              <div className="form-container-modal">
+                <div className="form-header">
+                  <img src={logo} alt="Logo" />
+                  <h2>Register for Food Services</h2>
+                </div>
+                <div className="submission-info">
+                  Submitted: {selectedRegistration.submittedAt && typeof selectedRegistration.submittedAt.toDate === "function" 
+                    ? selectedRegistration.submittedAt.toDate().toLocaleString() 
+                    : 'N/A'} | ID: {selectedRegistration.formData?.id || selectedRegistration.id}
+                </div>
+
+                <div className="form-section">
+                  <h3>{t('personalInfo')}</h3>
+                  <div className="form-grid">
+                    <label>{t('firstName')}
+                      <div className="field-value">{selectedRegistration.formData?.firstName || 'N/A'}</div>
+                    </label>
+                    <label>{t('lastName')}
+                      <div className="field-value">{selectedRegistration.formData?.lastName || 'N/A'}</div>
+                    </label>
+                    <label>{t('dob')}
+                      <div className="field-value">{selectedRegistration.formData?.dateOfBirth || 'N/A'}</div>
+                    </label>
+                    <label>{t('phone')}
+                      <div className="field-value">{selectedRegistration.formData?.phone || 'N/A'}</div>
+                    </label>
+                    <label>{t('address')}
+                      <div className="field-value">{selectedRegistration.formData?.address || 'N/A'}</div>
+                    </label>
+                    <label>{t('apartment')}
+                      <div className="field-value">{selectedRegistration.formData?.apartment || 'N/A'}</div>
+                    </label>
+                    <label>{t('city')}
+                      <div className="field-value">{selectedRegistration.formData?.city || 'N/A'}</div>
+                    </label>
+                    <label>{t('state')}
+                      <div className="field-value">{selectedRegistration.formData?.state || 'N/A'}</div>
+                    </label>
+                    <label>{t('zip')}
+                      <div className="field-value">{selectedRegistration.formData?.zipCode || 'N/A'}</div>
+                    </label>
+                    <label>{t('race')}
+                      <div className="field-value">{selectedRegistration.formData?.race || 'N/A'}</div>
+                    </label>
+                    <label>{t('ethnicity')}
+                      <div className="field-value">{selectedRegistration.formData?.ethnicity || 'N/A'}</div>
+                    </label>
+                    <label>{t('sex')}
+                      <div className="field-value">{selectedRegistration.formData?.sex || 'N/A'}</div>
+                    </label>
+                    <label>{t('maritalStatus')}
+                      <div className="field-value">{selectedRegistration.formData?.maritalStatus || 'N/A'}</div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h3>Household</h3>
+                  <div className="form-grid">
+                    <label>Children under 18
+                      <div className="field-value">{selectedRegistration.formData?.children || '0'}</div>
+                    </label>
+                    <label>Adults under 60
+                      <div className="field-value">{selectedRegistration.formData?.adults || '0'}</div>
+                    </label>
+                    <label>Seniors over 60
+                      <div className="field-value">{selectedRegistration.formData?.seniors || '0'}</div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h3>Language & Country of Birth</h3>
+                  <div className="form-grid">
+                    <label>Preferred Language
+                      <div className="field-value">{selectedRegistration.formData?.language || 'N/A'}</div>
+                    </label>
+                    <label>Country of Birth
+                      <div className="field-value">{selectedRegistration.formData?.countryOfBirth || 'N/A'}</div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h3>Income</h3>
+                  <div className="form-grid">
+                    <label>Income per Year
+                      <div className="field-value">{selectedRegistration.formData?.incomeYear || 'N/A'}</div>
+                    </label>
+                    <label>Income per Month
+                      <div className="field-value">{selectedRegistration.formData?.incomeMonth || 'N/A'}</div>
+                    </label>
+                    <label>Income per Week
+                      <div className="field-value">{selectedRegistration.formData?.incomeWeek || 'N/A'}</div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h3>Assistance Programs</h3>
+                  <div className="checkboxes-with-desc">
+                    <label>
+                      <span className="checkbox-display">{selectedRegistration.formData?.snap ? '☑' : '☐'}</span>
+                      <strong>SNAP</strong> – Supplemental Nutrition Assistance Program
+                    </label>
+                    <label>
+                      <span className="checkbox-display">{selectedRegistration.formData?.tanf ? '☑' : '☐'}</span>
+                      <strong>TANF</strong> – Temporary Assistance for Needy Families
+                    </label>
+                    <label>
+                      <span className="checkbox-display">{selectedRegistration.formData?.ssi ? '☑' : '☐'}</span>
+                      <strong>SSI</strong> – Supplemental Security Income
+                    </label>
+                    <label>
+                      <span className="checkbox-display">{selectedRegistration.formData?.nsls ? '☑' : '☐'}</span>
+                      <strong>NSLP</strong> – National School Lunch Program
+                    </label>
+                    <label>
+                      <span className="checkbox-display">{selectedRegistration.formData?.medicaid ? '☑' : '☐'}</span>
+                      <strong>Medicaid</strong> – Medicaid Health Coverage
+                    </label>
+                  </div>
+                </div>
+
+                {selectedRegistration.formData?.crisisReason && (
+                  <div className="form-section">
+                    <h3>Household Crisis Eligibility</h3>
+                    <div className="form-grid">
+                      <label style={{ gridColumn: '1 / -1' }}>If household is eligible for household crisis food needs, document reason for crisis here.
+                        <div className="field-value textarea-style">{selectedRegistration.formData.crisisReason}</div>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-section">
+                  <h3>Certification</h3>
+                  <div className="info-box">
+                    <p>1. I certify that I am a member of the household living at the address provided in the personal info section and that, on behalf of the household, I apply for USDA Foods that are distributed through The Emergency Food Assistance Program.</p>
+                    <p>2. All information provided to the agency determining my household's eligibility is, to the best of my knowledge and belief, true and correct.</p>
+                    <p>3. If applicable, the information provided by the household's proxy is, to the best of my knowledge and belief, true and correct.</p>
+                  </div>
+                  <label style={{ marginTop: '1rem', display: 'block' }}>
+                    <span className="checkbox-display">{selectedRegistration.formData?.agreedToCert ? '☑' : '☐'}</span>
+                    Check box to agree
+                  </label>
+                </div>
+
+                <div className="form-section">
+                  <h3>Applicant's Authorization</h3>
+                  <div className="info-box">
+                    <p>I understand that the information I have provided may be checked. Deliberately giving false information may result in a $250 fine, imprisonment up to three months, or both. I also understand that benefits received based on false information must be repaid.</p>
+                    <p>I give my permission for officials to check the information I have provided. I also give permission for future contact when the time comes to determine my continued eligibility.</p>
+                  </div>
+                </div>
+
+                {selectedRegistration.formData?.signature && (
+                  <div className="form-section">
+                    <h3>Signature</h3>
+                    <div className="signature-container">
+                      <img src={selectedRegistration.formData.signature} alt="Client Signature" className="signature-image" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-section admin-section">
+                  <h3 style={{ backgroundColor: '#333', color: 'white', padding: '8px', margin: '0 0 15px 0' }}>
+                    Eligibility or Ineligibility (Admin Only)
+                  </h3>
+                  
+                  {/* Household is eligible section */}
+                  <div style={{ border: '2px solid #333', padding: '10px', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                      <input
+                        type="checkbox"
+                        checked={adminFields[selectedRegistration.id]?.isEligible || false}
+                        onChange={(e) => handleAdminFieldChange(
+                          selectedRegistration.id, 
+                          'isEligible', 
+                          e.target.checked
+                        )}
+                        style={{ marginRight: '8px' }}
+                      />
+                      <strong>Household is eligible. Length of certification: Beginning (month/year):</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '25px' }}>
+                      <input
+                        type="text"
+                        placeholder="Month"
+                        value={adminFields[selectedRegistration.id]?.eligibleBeginMonth || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'eligibleBeginMonth', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                      <span>/</span>
+                      <input
+                        type="text"
+                        placeholder="Year"
+                        value={adminFields[selectedRegistration.id]?.eligibleBeginYear || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'eligibleBeginYear', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '25px', marginTop: '8px' }}>
+                      <strong>Ending (month/year):</strong>
+                      <input
+                        type="text"
+                        placeholder="Month"
+                        value={adminFields[selectedRegistration.id]?.eligibleEndMonth || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'eligibleEndMonth', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                      <span>/</span>
+                      <input
+                        type="text"
+                        placeholder="Year"
+                        value={adminFields[selectedRegistration.id]?.eligibleEndYear || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'eligibleEndYear', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Household is ineligible section */}
+                  <div style={{ border: '2px solid #333', padding: '10px', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                      <input
+                        type="checkbox"
+                        checked={adminFields[selectedRegistration.id]?.isIneligible || false}
+                        onChange={(e) => handleAdminFieldChange(
+                          selectedRegistration.id, 
+                          'isIneligible', 
+                          e.target.checked
+                        )}
+                        style={{ marginRight: '8px' }}
+                      />
+                      <strong>Household is ineligible based on Sections 2 and 3, but qualifies for TEFAP based on Household Crisis Eligibility (Section 4).</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '25px' }}>
+                      <strong>Length of certification: Beginning (month/year):</strong>
+                      <input
+                        type="text"
+                        placeholder="Month"
+                        value={adminFields[selectedRegistration.id]?.ineligibleBeginMonth || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'ineligibleBeginMonth', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                      <span>/</span>
+                      <input
+                        type="text"
+                        placeholder="Year"
+                        value={adminFields[selectedRegistration.id]?.ineligibleBeginYear || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'ineligibleBeginYear', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '25px', marginTop: '8px' }}>
+                      <strong>Ending (month/year):</strong>
+                      <input
+                        type="text"
+                        placeholder="Month"
+                        value={adminFields[selectedRegistration.id]?.ineligibleEndMonth || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'ineligibleEndMonth', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                      <span>/</span>
+                      <input
+                        type="text"
+                        placeholder="Year"
+                        value={adminFields[selectedRegistration.id]?.ineligibleEndYear || ''}
+                        onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'ineligibleEndYear', e.target.value)}
+                        style={{ width: '80px', padding: '4px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Staff signature section */}
+                  <div style={{ border: '2px solid #333', padding: '10px' }}>
+                    <div style={{ marginBottom: '10px' }}>
+                      <strong style={{ textDecoration: 'underline' }}>Signature and date of CE or site staff</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label><strong>Signature</strong></label>
+                        <div style={{ marginTop: '4px' }}>
+                          {adminFields[selectedRegistration.id]?.staffSignature ? (
+                            <div>
+                              <img 
+                                src={adminFields[selectedRegistration.id].staffSignature} 
+                                alt="Staff Signature" 
+                                style={{ 
+                                  maxWidth: '100%', 
+                                  height: '60px', 
+                                  border: '1px solid #ccc',
+                                  backgroundColor: '#f9f9f9'
+                                }} 
+                              />
+                              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                {selectedRegistration.adminData?.staffSignature === adminFields[selectedRegistration.id]?.staffSignature 
+                                  ? 'Saved from form' 
+                                  : 'Auto-loaded from previous signatures'}
+                              </div>
+                              <div style={{ marginTop: '5px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowStaffSignaturePad(selectedRegistration.id)}
+                                  style={{
+                                    padding: '5px 10px',
+                                    fontSize: '12px',
+                                    backgroundColor: '#2196F3',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '3px',
+                                    cursor: 'pointer',
+                                    marginRight: '5px'
+                                  }}
+                                >
+                                  Re-sign
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminFieldChange(selectedRegistration.id, 'staffSignature', '')}
+                                  style={{
+                                    padding: '5px 10px',
+                                    fontSize: '12px',
+                                    backgroundColor: '#f44336',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '3px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Clear
+                                </button>
+                                {user?.email && localStorage.getItem(`staffSignature_${user.email}`) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const savedSignature = localStorage.getItem(`staffSignature_${user.email}`);
+                                      if (savedSignature) {
+                                        handleAdminFieldChange(selectedRegistration.id, 'staffSignature', savedSignature);
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      backgroundColor: '#FF9800',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '3px',
+                                      cursor: 'pointer',
+                                      marginLeft: '5px'
+                                    }}
+                                  >
+                                    Use My Saved Signature
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => setShowStaffSignaturePad(selectedRegistration.id)}
+                                style={{
+                                  padding: '10px 20px',
+                                  fontSize: '14px',
+                                  backgroundColor: '#4CAF50',
+                                  color: 'white',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  marginBottom: '5px'
+                                }}
+                              >
+                                Click to Sign
+                              </button>
+                              {user?.email && localStorage.getItem(`staffSignature_${user.email}`) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const savedSignature = localStorage.getItem(`staffSignature_${user.email}`);
+                                    if (savedSignature) {
+                                      handleAdminFieldChange(selectedRegistration.id, 'staffSignature', savedSignature);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '8px 16px',
+                                    fontSize: '12px',
+                                    backgroundColor: '#FF9800',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    width: '100%'
+                                  }}
+                                >
+                                  Use My Saved Signature
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label><strong>Date</strong></label>
+                        <input
+                          type="date"
+                          value={adminFields[selectedRegistration.id]?.staffDate || ''}
+                          onChange={(e) => handleAdminFieldChange(selectedRegistration.id, 'staffDate', e.target.value)}
+                          style={{ width: '100%', padding: '4px', marginTop: '4px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                    <button
+                      onClick={() => saveAdminFields(selectedRegistration.id)}
+                      style={{
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        padding: '10px 20px',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      Save Admin Fields
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Signature Pad Modal */}
+      {showStaffSignaturePad && (
+        <div className="modal-overlay" onClick={() => setShowStaffSignaturePad(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Staff Signature</h3>
+              <button className="close-button" onClick={() => setShowStaffSignaturePad(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <StaffSignaturePad 
+                registrationId={showStaffSignaturePad}
+                onSave={(signatureData) => {
+                  handleAdminFieldChange(showStaffSignaturePad, 'staffSignature', signatureData);
+                  saveStaffSignatureToCache(signatureData);
+                  setShowStaffSignaturePad(null);
+                }}
+                onCancel={() => setShowStaffSignaturePad(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom spacing */}
+      <div style={{ height: '3rem' }}></div>
     </div>
   );
 }

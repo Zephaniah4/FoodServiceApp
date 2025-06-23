@@ -8,8 +8,13 @@
   "phone": "Número de Teléfono",
   "address": "Dirección",
   "apartment": "Número de Apartamento",
+  "city": "Ciudad",
+  "state": "Estado",
   "zip": "Código Postal",
+  "race": "Raza",
+  "selectRace": "Seleccionar Raza",
   "ethnicity": "Etnicidad",
+  "selectEthnicity": "Seleccionar Etnicidad",
   "sex": "Sexo",
   "maritalStatus": "Estado Civil",
   "household": "Detalles del Hogar",
@@ -37,8 +42,12 @@
   "cert3": "3. Si corresponde, la información proporcionada por el representante del hogar es, a mi leal saber y entender, verdadera y correcta.",
   "agreeCertLabel": "Marque la casilla para aceptar",
   "signature": "Firma",
+  "signatureRequired": "Proporcione una firma antes de enviar.",
   "submit": "Enviar",
   "submittedSuccessfully": "¡Formulario enviado con éxito!",
+  "selectState": "Seleccionar un estado",
+  "selectSex": "Seleccionar Sexo",
+  "selectMaritalStatus": "Seleccionar Estado Civil",
   "usdaTitle": "Declaración de No Discriminación del USDA",
   "usda1": "De acuerdo con la ley federal de derechos civiles y las regulaciones y políticas de derechos civiles del Departamento de Agricultura de los EE. UU. (USDA), esta institución tiene prohibido discriminar por motivos de raza, color, origen nacional, sexo (incluida la identidad de género y la orientación sexual), discapacidad, edad o represalia o represalia por actividad previa de derechos civiles.",
   "usda2": "La información del programa puede estar disponible en idiomas distintos al inglés. Las personas con discapacidades que requieran medios alternativos de comunicación para obtener información del programa (por ejemplo, Braille, letra grande, cinta de audio, lenguaje de señas estadounidense), deben comunicarse con la agencia estatal o local responsable que administra el programa o con el Centro TARGET del USDA al (202) 720-2600 (voz y TTY) o comunicarse con el USDA a través del Servicio Federal de Retransmisión al (800) 877-8339.",
@@ -56,7 +65,9 @@
     "checkingIn": "Registrando...",
     "language": "Idioma",
     "alreadyCheckedIn": "¡Ya se ha registrado!",
-    "noMatchingRecord": "No se encontró ningún registro coincidente."
+    "noMatchingRecord": "No se encontró ningún registro coincidente.",
+    "tefapExpired": "Su registro TEFAP ha expirado (más de 1 año). Por favor complete un nuevo formulario de registro antes de registrarse.",
+    "registerNow": "Registrarse Ahora"
   },
   "White": "Blanco",
   "Black": "Negro",
@@ -64,10 +75,18 @@
   "Asian": "Asiático",
   "Native": "Nativo",
   "Other": "Otro",
+  "Non-Hispanic": "No Hispano",
   "Male": "Masculino",
   "Female": "Femenino",
   "Single": "Soltero",
   "Married": "Casado",
   "Divorced": "Divorciado",
-  "Widowed": "Viudo"
+  "Widowed": "Viudo",
+  "tefap": "TEFAP",
+  "eligible": "Elegible",
+  "renewal": {
+    "title": "Renovación TEFAP",
+    "subtitle": "Renovación de Registro TEFAP",
+    "message": "Su información ha sido completada automáticamente de su registro anterior. Por favor revise y actualice cualquier información que haya cambiado."
+  }
 }
