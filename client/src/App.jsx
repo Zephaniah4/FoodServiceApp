@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import RegistrationForm from './RegistrationForm';
 import CheckInForm from './CheckInForm';
@@ -9,18 +9,39 @@ import ErrorBoundary from "./ErrorBoundary";
 import Home from './Home';
 
 function App() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+
   return (
     <ErrorBoundary>
        <Router>
         <div className="app-container">
           <header className="header">
-            <h1>Food Service App</h1>
-            <div className="navbar">
-              <NavLink to="/" end className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Home</NavLink>
-              <NavLink to="/register" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Registration</NavLink>
-              <NavLink to="/checkin" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Check-In</NavLink>
-              <NavLink to="/admin" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Admin</NavLink>
+            <div className="header-content">
+              <h1>Food Service App</h1>
+              <button 
+                className={`mobile-menu-toggle ${mobileMenuOpen ? 'active' : ''}`}
+                onClick={toggleMobileMenu}
+                aria-label="Toggle mobile menu"
+              >
+                <span></span>
+                <span></span>
+                <span></span>
+              </button>
             </div>
+            <nav className={`navbar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+              <NavLink to="/" end className={({ isActive }) => isActive ? "nav-link active" : "nav-link"} onClick={closeMobileMenu}>Home</NavLink>
+              <NavLink to="/register" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"} onClick={closeMobileMenu}>Registration</NavLink>
+              <NavLink to="/checkin" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"} onClick={closeMobileMenu}>Check-In</NavLink>
+              <NavLink to="/admin" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"} onClick={closeMobileMenu}>Admin</NavLink>
+            </nav>
           </header>
           <main>
             <Routes>
