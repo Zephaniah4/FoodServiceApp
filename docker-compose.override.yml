@@ -13,8 +13,10 @@ services:
       - ./client/node_modules:/app/node_modules
     env_file:
       - .env
+    # Setting the host to 0.0.0.0 and port to 3000 tells the React development server to listen on all network interfaces within the container, making it accessible from your host machine (and thus enabling Fast Refresh/hot reload when using Docker)
     environment:
-      NODE_ENV: development
+      - HOST=0.0.0.0
+      - NODE_ENV=development
     stdin_open: true
     tty: true
     command: npm start
