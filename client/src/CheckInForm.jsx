@@ -99,13 +99,13 @@ export default function CheckInForm() {
         });
         console.log("Added to checkins collection.");
 
-        setStatus(`Welcome, ${docData.formData.firstName}! Thank you for checking in.`);
+        setStatus(t('checkin.checkinConfirmed', { name: docData.formData.firstName }));
       } else {
         setStatus(t('checkin.noMatchingRecord'));
         console.log("No matching registration found.");
       }
     } catch (error) {
-      setStatus('Error checking in. Please try again.');
+      setStatus(t('checkin.error'));
       console.error("Check-in error:", error);
     }
 
@@ -119,8 +119,8 @@ export default function CheckInForm() {
     document.querySelector('.submit-button')?.classList.remove('loading');
   }
 
-  // Add success animation for welcome messages
-  if (status.startsWith("Welcome")) {
+  // Add success animation for success messages
+  if (status.startsWith(t('checkin.checkinConfirmed', { name: '' }).trim())) {
     setTimeout(() => {
       const alertElement = document.querySelector('.alert-success');
       if (alertElement) {
