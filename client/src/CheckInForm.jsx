@@ -13,12 +13,14 @@ export default function CheckInForm() {
   const [dob, setDob] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [tefapExpired, setTefapExpired] = useState(false);
   const { t, i18n } = useTranslation();
 
   const handleCheckIn = async (e) => {
     e.preventDefault();
     setLoading(true);
     setStatus('');
+    setTefapExpired(false); // Reset TEFAP expired state
     console.log("Check-in started. Method:", method);
 
     try {
@@ -42,6 +44,31 @@ export default function CheckInForm() {
         const docRef = querySnapshot.docs[0].ref;
         const docData = querySnapshot.docs[0].data();
         console.log("Found registration:", docData);
+
+        // Store registration data for potential pre-population if TEFAP expires
+        sessionStorage.setItem('currentRegistrationData', JSON.stringify(docData));
+
+        // Check TEFAP date expiration (1 year)
+        const tefapDate = docData.formData?.tefapDate;
+        if (tefapDate) {
+          const tefapDateTime = new Date(tefapDate);
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          
+          if (tefapDateTime < oneYearAgo) {
+            setStatus(t('checkin.tefapExpired'));
+            setTefapExpired(true);
+            setLoading(false);
+            
+            // Optionally, you could redirect to the registration form
+            // window.location.href = '/register'; // Uncomment if you want automatic redirect
+            
+            return; // Stop the check-in process
+          }
+        }
+
+        // Reset TEFAP expired flag if date is valid
+        setTefapExpired(false);
 
         await updateDoc(docRef, {
           lastCheckIn: Timestamp.now()
@@ -84,6 +111,23 @@ export default function CheckInForm() {
 
     setLoading(false);
   };
+
+  // Add loading animation to form
+  if (loading) {
+    document.querySelector('.submit-button')?.classList.add('loading');
+  } else {
+    document.querySelector('.submit-button')?.classList.remove('loading');
+  }
+
+  // Add success animation for welcome messages
+  if (status.startsWith("Welcome")) {
+    setTimeout(() => {
+      const alertElement = document.querySelector('.alert-success');
+      if (alertElement) {
+        alertElement.style.animation = 'pulse 0.6s ease-in-out';
+      }
+    }, 100);
+  }
 
   return (
     <div className="checkin-container"> {/* Apply the checkin-container class */}
@@ -150,6 +194,8 @@ export default function CheckInForm() {
           className={
             status === t('checkin.noMatchingRecord')
               ? "alert-no-record" // Apply the alert-no-record class
+              : status === t('checkin.tefapExpired')
+              ? "tefap-expired-warning" // Apply the TEFAP expiration warning class
               : status.includes(t('checkin.alreadyCheckedIn'))
               ? "alert alert-warning"
               : status.startsWith("Welcome")
@@ -160,6 +206,31 @@ export default function CheckInForm() {
           }
         >
           {status}
+          {tefapExpired && (
+            <div style={{ marginTop: '15px' }}>
+              <button 
+                onClick={() => {
+                  // Store the existing registration data in sessionStorage for pre-population
+                  const docData = JSON.parse(sessionStorage.getItem('currentRegistrationData') || '{}');
+                  sessionStorage.setItem('prePopulateRegistration', JSON.stringify(docData.formData || {}));
+                  sessionStorage.setItem('isRenewal', 'true');
+                  window.location.href = '/register';
+                }}
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                {t('checkin.registerNow')}
+              </button>
+            </div>
+          )}
         </div>
       )}
           </div>
