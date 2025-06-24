@@ -5,6 +5,9 @@ import { collection, addDoc, query, where, getDocs, updateDoc, Timestamp } from 
 import { useTranslation } from 'react-i18next';
 import './i18n';
 import './CheckInForm.css'; // Import the new CSS file
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import DateOfBirthPicker from './components/DateOfBirthPicker';
 
 export default function CheckInForm() {
   const [method, setMethod] = useState('id');
@@ -130,109 +133,109 @@ export default function CheckInForm() {
   }
 
   return (
-    <div className="checkin-container"> {/* Apply the checkin-container class */}
-      <div className="language-selector">
-        <label htmlFor="language-select" style={{ marginRight: 8 }}>
-          {t('checkin.language')}
-        </label>
-        <select
-          value={i18n.language}
-          onChange={e => i18n.changeLanguage(e.target.value)}
-        >
-          <option value="en">English</option>
-          <option value="es">Español</option>
-        </select>
-      </div>
-      <h2 className="checkin-title">{t('checkin.title')}</h2> {/* Apply the checkin-title class */}
-      <div className="checkin-methods">
-        <button onClick={() => setMethod('id')} className={method === 'id' ? 'active' : ''}>{t('checkin.useId')}</button>
-        <button onClick={() => setMethod('name')} className={method === 'name' ? 'active' : ''}>{t('checkin.useNameDob')}</button>
-      </div>
-
-      <form onSubmit={handleCheckIn} className="form-grid"> {/* Apply the form-grid class */}
-        {method === 'id' ? (
-          <>
-            <label htmlFor="userId">{t('checkin.idLabel')}</label>
-            <input
-              type="text"
-              id="userId"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              required
-            />
-          </>
-        ) : (
-          <>
-            <label htmlFor="lastName">{t('checkin.lastNameLabel')}</label>
-            <input
-              type="text"
-              id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-            />
-            <label htmlFor="dob">{t('checkin.dobLabel')}</label>
-            <input
-              type="text"
-              id="dob"
-              value={dob}
-              onChange={(e) => setDob(e.target.value)}
-              placeholder="MM-DD-YYYY"
-              pattern="\d{2}-\d{2}-\d{4}"
-              required
-            />
-          </>
-        )}
-
-        <button type="submit" className="submit-button" disabled={loading}> {/* Apply the submit-button class */}
-          {loading ? t('checkin.checkingIn') : t('checkin.checkIn')}
-        </button>
-      </form>
-
-      {status && (
-        <div
-          className={
-            status === t('checkin.noMatchingRecord')
-              ? "alert-no-record" // Apply the alert-no-record class
-              : status === t('checkin.tefapExpired')
-              ? "tefap-expired-warning" // Apply the TEFAP expiration warning class
-              : status.includes(t('checkin.alreadyCheckedIn'))
-              ? "alert alert-warning"
-              : status.startsWith("Welcome")
-              ? "alert alert-success"
-              : status.startsWith("Error")
-              ? "alert alert-error"
-              : "alert"
-          }
-        >
-          {status}
-          {tefapExpired && (
-            <div style={{ marginTop: '15px' }}>
-              <button 
-                onClick={() => {
-                  // Store the existing registration data in sessionStorage for pre-population
-                  const docData = JSON.parse(sessionStorage.getItem('currentRegistrationData') || '{}');
-                  sessionStorage.setItem('prePopulateRegistration', JSON.stringify(docData.formData || {}));
-                  sessionStorage.setItem('isRenewal', 'true');
-                  window.location.href = '/register';
-                }}
-                style={{
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold'
-                }}
-              >
-                {t('checkin.registerNow')}
-              </button>
-            </div>
-          )}
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <div className="checkin-container"> {/* Apply the checkin-container class */}
+        <div className="language-selector">
+          <label htmlFor="language-select" style={{ marginRight: 8 }}>
+            {t('checkin.language')}
+          </label>
+          <select
+            value={i18n.language}
+            onChange={e => i18n.changeLanguage(e.target.value)}
+          >
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
         </div>
-      )}
+        <h2 className="checkin-title">{t('checkin.title')}</h2> {/* Apply the checkin-title class */}
+        <div className="checkin-methods">
+          <button onClick={() => setMethod('id')} className={method === 'id' ? 'active' : ''}>{t('checkin.useId')}</button>
+          <button onClick={() => setMethod('name')} className={method === 'name' ? 'active' : ''}>{t('checkin.useNameDob')}</button>
+        </div>
+
+        <form onSubmit={handleCheckIn} className="form-grid"> {/* Apply the form-grid class */}
+          {method === 'id' ? (
+            <>
+              <label htmlFor="userId">{t('checkin.idLabel')}</label>
+              <input
+                type="text"
+                id="userId"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                required
+              />
+            </>
+          ) : (
+            <>
+              <label htmlFor="lastName">{t('checkin.lastNameLabel')}</label>
+              <input
+                type="text"
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+              <label htmlFor="dob">{t('checkin.dobLabel')}</label>
+              <DateOfBirthPicker
+                value={dob}
+                onChange={setDob}
+                minYear={1915}
+                maxYear={new Date().getFullYear()}
+                required
+              />
+            </>
+          )}
+
+          <button type="submit" className="submit-button" disabled={loading}> {/* Apply the submit-button class */}
+            {loading ? t('checkin.checkingIn') : t('checkin.checkIn')}
+          </button>
+        </form>
+
+        {status && (
+          <div
+            className={
+              status === t('checkin.noMatchingRecord')
+                ? "alert-no-record" // Apply the alert-no-record class
+                : status === t('checkin.tefapExpired')
+                ? "tefap-expired-warning" // Apply the TEFAP expiration warning class
+                : status.includes(t('checkin.alreadyCheckedIn'))
+                ? "alert alert-warning"
+                : status.startsWith("Welcome")
+                ? "alert alert-success"
+                : status.startsWith("Error")
+                ? "alert alert-error"
+                : "alert"
+            }
+          >
+            {status}
+            {tefapExpired && (
+              <div style={{ marginTop: '15px' }}>
+                <button 
+                  onClick={() => {
+                    // Store the existing registration data in sessionStorage for pre-population
+                    const docData = JSON.parse(sessionStorage.getItem('currentRegistrationData') || '{}');
+                    sessionStorage.setItem('prePopulateRegistration', JSON.stringify(docData.formData || {}));
+                    sessionStorage.setItem('isRenewal', 'true');
+                    window.location.href = '/register';
+                  }}
+                  style={{
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {t('checkin.registerNow')}
+                </button>
+              </div>
+            )}
           </div>
+        )}
+      </div>
+    </LocalizationProvider>
   );
 }

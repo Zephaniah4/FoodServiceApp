@@ -6,10 +6,9 @@ import './FormStyles_Green.css';
 import logo from './ntfb_header_logo_retina.png';
 import { db } from './firebase';
 import { collection, addDoc, updateDoc, Timestamp, query, where, getDocs, doc } from 'firebase/firestore';
-import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
+import DateOfBirthPicker from './components/DateOfBirthPicker';
 
 export default function RegistrationForm() {
   const { t } = useTranslation();
@@ -382,71 +381,16 @@ export default function RegistrationForm() {
               <input name="lastName" value={form.lastName} onChange={handleChange} required />
             </label>
             <label>{t('dob')}
-              <DatePicker
-                value={form.dateOfBirth ? dayjs(form.dateOfBirth, "MM-DD-YYYY") : null}
-                onChange={(date) => {
-                  if (date) {
-                    handleChange({ target: { name: 'dateOfBirth', value: date.format("MM-DD-YYYY") } });
-                  } else {
-                    handleChange({ target: { name: 'dateOfBirth', value: null } });
-                  }
-                }}
-                minDate={dayjs().year(minYear)}
-                maxDate={dayjs().year(currentYear)}
-                format="MM-DD-YYYY"
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: {
-                      '& .MuiInputBase-root': {
-                        height: '40px !important',
-                        minHeight: '40px !important',
-                      },
-                      '& .MuiInputBase-input': {
-                        padding: '8px 12px !important',
-                        height: '24px !important',
-                        lineHeight: '24px !important',
-                      },
-                    }
-                  }
-                }}
-                sx={{
-                  width: '100%',
-                  marginTop: '0.2rem !important',
-                  alignSelf: 'flex-end',
-                  '& .MuiInputBase-root': {
-                    width: '100%',
-                    height: '40px !important',
-                    minHeight: '40px !important',
-                    maxHeight: '40px !important',
-                    display: 'flex',
-                    alignItems: 'center',
-                  },
-                  '& .MuiInputBase-input': {
-                    padding: '8px 12px !important',
-                    fontSize: '1rem',
-                    color: '#333',
-                    height: '24px !important',
-                    lineHeight: '24px !important',
-                    border: '1px solid #bdbdbd',
-                    borderRadius: '5px',
-                    boxSizing: 'border-box',
-                  },
-                  '& .MuiInputBase-input:focus': {
-                    borderColor: '#388e3c',
-                    outline: 'none',
-                    boxShadow: '0 0 0 2px rgba(56, 142, 60, 0.2)',
-                  },
-                  '& .MuiIconButton-root': {
-                    padding: '8px',
-                    color: '#757575',
-                  },
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      border: 'none',
-                    },
-                  },
-                }}
+              <DateOfBirthPicker
+                value={form.dateOfBirth}
+                onChange={date =>
+                  handleChange({
+                    target: { name: 'dateOfBirth', value: date }
+                  })
+                }
+                minYear={minYear}
+                maxYear={currentYear}
+                required
               />
             </label>
             <label>{t('phone')}
