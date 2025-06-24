@@ -1,0 +1,15 @@
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: production
+    image: ${DOCKER_REGISTRY-}foodserviceapp
+    working_dir: /app
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

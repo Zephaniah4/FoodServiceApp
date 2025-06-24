@@ -1,0 +1,21 @@
+services:
+  client:
+    build: 
+      context: ./client
+      dockerfile: Dockerfile
+      target: development
+    image: ${DOCKER_REGISTRY-}foodserviceapp
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client:/app
+      - ./client/node_modules:/app/node_modules
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+    stdin_open: true
+    tty: true
+    command: npm start
+    # command: /bin/sh -c "npm ci && npm test -- --watchAll=false"

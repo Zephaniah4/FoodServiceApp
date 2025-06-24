@@ -1,0 +1,12 @@
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    image: ${DOCKER_REGISTRY-}foodserviceapp
+    working_dir: /app
+    env_file:
+      - .env
+    restart: unless-stopped
+    # command: npm start
+    # command: /bin/sh -c "npm ci && npm test -- --watchAll=false"
