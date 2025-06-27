@@ -44,6 +44,7 @@
   "agreeCertLabel": "Marque la casilla para aceptar",
   "signature": "Firma",
   "signatureRequired": "Proporcione una firma antes de enviar.",
+  "clearSignature": "Limpiar Firma",
   "submit": "Enviar",
   "submittedSuccessfully": "¡Formulario enviado con éxito!",
   "selectState": "Seleccionar un estado",
@@ -70,7 +71,8 @@
     "tefapExpired": "Su registro TEFAP ha expirado (más de 1 año). Por favor complete un nuevo formulario de registro antes de registrarse.",
     "registerNow": "Registrarse Ahora"
   },
-  "White": "Blanco",
+  "Caucasian": "Caucásico",
+  "White": "Caucásico",
   "Black": "Negro",
   "Latino": "Latino",
   "Hispanic": "Hispano",

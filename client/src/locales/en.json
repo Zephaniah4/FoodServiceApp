@@ -48,6 +48,7 @@
   "usda3": "To file a program discrimination complaint, a Complainant should complete a Form AD-3027, USDA Program Discrimination Complaint Form which can be obtained online at https://www.usda.gov/sites/default/files/documents/USD AOASCR%20P-Complaint-Form-0508-0002-508-11-28-17Fax2Mail.pdf, from any USDA office, by calling (866) 632-9992, or by writing a letter addressed to USDA. The letter must contain the complainant's name, address, telephone number, and a written description of the alleged discriminatory action in sufficient detail to inform the Assistant Secretary for Civil Rights (ASCR) about the nature and date of an alleged civil rights violation. The completed AD-3027 form or letter must be submitted to USDA by mail: U.S. Department of Agriculture, Office of the Assistant Secretary for Civil Rights, 1400 Independence Avenue, SW, Washington, D.C. 20250-9410; or fax: (833) 256-1665 or (202) 690-7442; or email: program.intake@usda.gov. This institution is an equal opportunity provider.",
   "signature": "Signature",
   "signatureRequired": "Please provide a signature before submitting.",
+  "clearSignature": "Clear Signature",
   "submit": "Submit",
   "submittedSuccessfully": "Form submitted successfully!",
   "selectState": "Select a state",
@@ -69,7 +70,8 @@
     "tefapExpired": "Your TEFAP registration has expired (older than 1 year). Please complete a new registration form before checking in.",
     "registerNow": "Register Now"
   },
-  "White": "White",
+  "Caucasian": "Caucasian",
+  "White": "Caucasian",
   "Black": "Black",
   "Latino": "Latino",
   "Hispanic": "Hispanic",
