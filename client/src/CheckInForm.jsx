@@ -5,6 +5,10 @@ import { collection, addDoc, query, where, getDocs, updateDoc, Timestamp } from 
 import { useTranslation } from 'react-i18next';
 import './i18n';
 import './CheckInForm.css'; // Import the new CSS file
+import { DatePicker } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 
 export default function CheckInForm() {
   const [method, setMethod] = useState('id');
@@ -29,12 +33,14 @@ export default function CheckInForm() {
         q = query(collection(db, 'registrations'), where('formData.id', '==', userId));
         console.log("Querying by ID:", userId);
       } else {
+        // Format the date for comparison (ensure it matches the MM-DD-YYYY format stored in the database)
+        const formattedDob = dob; // Already in MM-DD-YYYY format from DatePicker
         q = query(
           collection(db, 'registrations'),
           where('formData.lastName', '==', lastName),
-          where('formData.dateOfBirth', '==', dob)
+          where('formData.dateOfBirth', '==', formattedDob)
         );
-        console.log("Querying by Name/DOB:", lastName, dob);
+        console.log("Querying by Name/DOB:", lastName, formattedDob);
       }
 
       const querySnapshot = await getDocs(q);
@@ -130,7 +136,8 @@ export default function CheckInForm() {
   }
 
   return (
-    <div className="checkin-container"> {/* Apply the checkin-container class */}
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <div className="checkin-container"> {/* Apply the checkin-container class */}
       <div className="language-selector">
         <label htmlFor="language-select" style={{ marginRight: 8 }}>
           {t('checkin.language')}
@@ -172,14 +179,50 @@ export default function CheckInForm() {
               required
             />
             <label htmlFor="dob">{t('checkin.dobLabel')}</label>
-            <input
-              type="text"
-              id="dob"
-              value={dob}
-              onChange={(e) => setDob(e.target.value)}
-              placeholder="MM-DD-YYYY"
-              pattern="\d{2}-\d{2}-\d{4}"
-              required
+            <DatePicker
+              value={dob ? dayjs(dob, "MM-DD-YYYY") : null}
+              onChange={(date) => {
+                if (date) {
+                  setDob(date.format("MM-DD-YYYY"));
+                } else {
+                  setDob('');
+                }
+              }}
+              format="MM-DD-YYYY"
+              slotProps={{
+                textField: {
+                  size: 'small',
+                  required: true,
+                  sx: {
+                    '& .MuiInputBase-root': {
+                      height: '40px !important',
+                      minHeight: '40px !important',
+                    },
+                    '& .MuiInputBase-input': {
+                      padding: '8px 12px !important',
+                      height: '24px !important',
+                      lineHeight: '24px !important',
+                    },
+                  }
+                }
+              }}
+              sx={{
+                width: '100%',
+                marginTop: '0.2rem !important',
+                '& .MuiInputBase-root': {
+                  width: '100%',
+                  height: '40px !important',
+                  minHeight: '40px !important',
+                  maxHeight: '40px !important',
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiInputBase-input': {
+                  padding: '8px 12px !important',
+                  height: '24px !important',
+                  lineHeight: '24px !important',
+                },
+              }}
             />
           </>
         )}
@@ -233,6 +276,7 @@ export default function CheckInForm() {
           )}
         </div>
       )}
-          </div>
+      </div>
+    </LocalizationProvider>
   );
 }
