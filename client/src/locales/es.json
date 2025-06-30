@@ -68,6 +68,8 @@
     "language": "Idioma",
     "alreadyCheckedIn": "¡Ya se ha registrado!",
     "noMatchingRecord": "No se encontró ningún registro coincidente.",
+    "welcome": "Bienvenido",
+    "welcomeMessage": "¡Bienvenido, {{firstName}}! Gracias por registrarse.",
     "tefapExpired": "Su registro TEFAP ha expirado (más de 1 año). Por favor complete un nuevo formulario de registro antes de registrarse.",
     "registerNow": "Registrarse Ahora"
   },

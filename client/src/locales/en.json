@@ -67,6 +67,8 @@
     "language": "Language",
     "alreadyCheckedIn": "You have already Checked In!",
     "noMatchingRecord": "No matching record found.",
+    "welcome": "Welcome",
+    "welcomeMessage": "Welcome, {{firstName}}! Thank you for checking in.",
     "tefapExpired": "Your TEFAP registration has expired (older than 1 year). Please complete a new registration form before checking in.",
     "registerNow": "Register Now"
   },

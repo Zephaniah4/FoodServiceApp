@@ -105,7 +105,7 @@ export default function CheckInForm() {
         });
         console.log("Added to checkins collection.");
 
-        setStatus(`Welcome, ${docData.formData.firstName}! Thank you for checking in.`);
+        setStatus(t('checkin.welcomeMessage', { firstName: docData.formData.firstName }));
       } else {
         setStatus(t('checkin.noMatchingRecord'));
         console.log("No matching registration found.");
@@ -126,7 +126,7 @@ export default function CheckInForm() {
   }
 
   // Add success animation for welcome messages
-  if (status.startsWith("Welcome")) {
+  if (status && status.includes(t('checkin.welcome'))) {
     setTimeout(() => {
       const alertElement = document.querySelector('.alert-success');
       if (alertElement) {
@@ -241,7 +241,7 @@ export default function CheckInForm() {
               ? "tefap-expired-warning" // Apply the TEFAP expiration warning class
               : status.includes(t('checkin.alreadyCheckedIn'))
               ? "alert alert-warning"
-              : status.startsWith("Welcome")
+              : status.includes(t('checkin.welcome'))
               ? "alert alert-success"
               : status.startsWith("Error")
               ? "alert alert-error"
