@@ -784,7 +784,8 @@ function AdminViewer() {
       flat.submittedAt = reg.submittedAt && typeof reg.submittedAt.toDate === "function"
         ? reg.submittedAt.toDate().toLocaleString()
         : "";
-      flat.id = reg.id || "";
+      // Use the actual registration ID from formData instead of the Firebase document ID
+      flat.id = reg.formData?.id || reg.id || "";
       
       // Add admin fields
       const adminData = reg.adminData || {};
