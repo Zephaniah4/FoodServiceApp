@@ -1438,6 +1438,7 @@ function AdminViewer() {
                               <option value="">Select Location</option>
                               <option value="Plano">Plano</option>
                               <option value="Dallas">Dallas</option>
+                              <option value="Both">Both</option>
                             </select>
                             <button
                               onClick={() => saveLocation(reg.id, reg.formData?.id || reg.id, reg.formData?.location)}
@@ -1953,6 +1954,7 @@ function AdminViewer() {
                         <option value="">Select</option>
                         <option value="Plano">Plano</option>
                         <option value="Dallas">Dallas</option>
+                        <option value="Both">Both</option>
                       </select>
                       <button
                         onClick={() => saveLocation(reg.id, reg.formData?.id || reg.id, reg.formData?.location)}
@@ -2126,6 +2128,7 @@ function AdminViewer() {
                           <option value="">Select</option>
                           <option value="Plano">Plano</option>
                           <option value="Dallas">Dallas</option>
+                          <option value="Both">Both</option>
                         </select>
                         <button
                           onClick={() => saveLocation(item.id, item.userId || item.formData?.id || item.id, item.location || item.formData?.location)}
