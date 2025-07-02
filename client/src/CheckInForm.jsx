@@ -102,6 +102,13 @@ export default function CheckInForm() {
           status: "waiting",
           phone: docData.formData.phone || '',
           household: docData.formData.household || '',
+          location: docData.formData.location || '',
+          formData: {
+            id: docData.formData.id,
+            firstName: docData.formData.firstName,
+            lastName: docData.formData.lastName,
+            location: docData.formData.location || ''
+          }
         });
         console.log("Added to checkins collection.");
 

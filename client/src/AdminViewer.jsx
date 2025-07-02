@@ -160,6 +160,7 @@ function AdminViewer() {
   const [showStaffSignaturePad, setShowStaffSignaturePad] = useState(null);
   const [editedTefap, setEditedTefap] = useState({});
   const [editedFormFields, setEditedFormFields] = useState({});
+  const [editedLocations, setEditedLocations] = useState({});
   
   // New state variables for sorting and search
   const [sortField, setSortField] = useState('submittedAt');
@@ -262,6 +263,43 @@ function AdminViewer() {
         [field]: value 
       } 
     }));
+  };
+
+  const handleLocationChange = (docId, location) => {
+    setEditedLocations(prev => ({ ...prev, [docId]: location }));
+  };
+
+  const saveLocation = async (regDocId, userId, currentLocation) => {
+    const newLocation = editedLocations[regDocId] !== undefined ? editedLocations[regDocId] : currentLocation || "";
+
+    try {
+      // Update the registration
+      await updateDoc(doc(db, "registrations", regDocId), {
+        "formData.location": newLocation
+      });
+
+      // Update in all checkins for this user
+      const checkinsQuery = query(
+        collection(db, "checkins"),
+        where("userId", "==", userId)
+      );
+      const snapshot = await getDocs(checkinsQuery);
+      
+      const updates = snapshot.docs.map(d => {
+        return updateDoc(doc(db, "checkins", d.id), {
+          location: newLocation,
+          "formData.location": newLocation
+        });
+      });
+      await Promise.all(updates);
+
+      setSaveMessage("Location saved successfully!");
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (error) {
+      console.error("Error saving location:", error);
+      setSaveMessage("Error saving location!");
+      setTimeout(() => setSaveMessage(""), 3000);
+    }
   };
 
   // Enhanced household management functions
@@ -758,6 +796,7 @@ function AdminViewer() {
       "agreedToCert",
       "lastCheckIn",
       "submittedAt",
+      "site",
       // Admin fields
       "adminIsEligible",
       "adminIsIneligible",
@@ -804,6 +843,9 @@ function AdminViewer() {
       
       // TEFAP fields
       flat.tefapDate = flat.tefapDate || "";
+      
+      // Site field (maps from location field in database)
+      flat.site = flat.location || "";
       
       allKeys.forEach(key => {
         if (!(key in flat)) flat[key] = "";
@@ -1356,6 +1398,7 @@ function AdminViewer() {
                         <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Phone</th>
                         <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Address</th>
                         <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Date of Birth</th>
+                        <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Site</th>
                         <th style={{ padding: "12px", textAlign: "left" }}>Actions</th>
                       </tr>
                     </thead>
@@ -1379,6 +1422,38 @@ function AdminViewer() {
                           </td>
                           <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
                             {reg.formData?.dateOfBirth}
+                          </td>
+                          <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
+                            <select
+                              value={editedLocations[reg.id] !== undefined ? editedLocations[reg.id] : (reg.formData?.location || '')}
+                              onChange={(e) => handleLocationChange(reg.id, e.target.value)}
+                              style={{
+                                padding: "4px 8px",
+                                border: "1px solid #ccc",
+                                borderRadius: "3px",
+                                fontSize: "12px",
+                                backgroundColor: "white"
+                              }}
+                            >
+                              <option value="">Select Location</option>
+                              <option value="Plano">Plano</option>
+                              <option value="Dallas">Dallas</option>
+                            </select>
+                            <button
+                              onClick={() => saveLocation(reg.id, reg.formData?.id || reg.id, reg.formData?.location)}
+                              style={{
+                                marginLeft: "4px",
+                                padding: "2px 6px",
+                                backgroundColor: "#2196F3",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "2px",
+                                cursor: "pointer",
+                                fontSize: "10px"
+                              }}
+                            >
+                              Save
+                            </button>
                           </td>
                           <td style={{ padding: "12px" }}>
                             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -1628,6 +1703,7 @@ function AdminViewer() {
                 <th>APT #</th>
                 <th>Picking up for</th>
                 <th>{t('tefap')}</th>
+                <th>Site</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1861,6 +1937,40 @@ function AdminViewer() {
                     </div>
                   </td>
                   <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <select
+                        value={editedLocations[reg.id] !== undefined ? editedLocations[reg.id] : (reg.formData?.location || '')}
+                        onChange={(e) => handleLocationChange(reg.id, e.target.value)}
+                        style={{
+                          padding: "4px 8px",
+                          border: "1px solid #ccc",
+                          borderRadius: "3px",
+                          fontSize: "12px",
+                          backgroundColor: "white",
+                          width: "90px"
+                        }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Plano">Plano</option>
+                        <option value="Dallas">Dallas</option>
+                      </select>
+                      <button
+                        onClick={() => saveLocation(reg.id, reg.formData?.id || reg.id, reg.formData?.location)}
+                        style={{
+                          padding: "2px 6px",
+                          backgroundColor: "#2196F3",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "2px",
+                          cursor: "pointer",
+                          fontSize: "10px"
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </td>
+                  <td>
                     <div className="action-buttons">
                       {showArchived ? (
                         <button onClick={() => unarchiveRegistration(reg.id)}>Queue</button>
@@ -1956,6 +2066,7 @@ function AdminViewer() {
                   <th>Status</th>
                   <th>Position</th>
                   <th>Picking up for</th>
+                  <th>Site</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1999,6 +2110,40 @@ function AdminViewer() {
                       </div>
                     </td>
                     <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <select
+                          value={editedLocations[item.id] !== undefined ? editedLocations[item.id] : (item.location || item.formData?.location || '')}
+                          onChange={(e) => handleLocationChange(item.id, e.target.value)}
+                          style={{
+                            padding: "2px 4px",
+                            border: "1px solid #ccc",
+                            borderRadius: "2px",
+                            fontSize: "10px",
+                            backgroundColor: "white",
+                            width: "70px"
+                          }}
+                        >
+                          <option value="">Select</option>
+                          <option value="Plano">Plano</option>
+                          <option value="Dallas">Dallas</option>
+                        </select>
+                        <button
+                          onClick={() => saveLocation(item.id, item.userId || item.formData?.id || item.id, item.location || item.formData?.location)}
+                          style={{
+                            padding: "1px 4px",
+                            backgroundColor: "#2196F3",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "2px",
+                            cursor: "pointer",
+                            fontSize: "9px"
+                          }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </td>
+                    <td>
                       <div className="action-buttons">
                         <button onClick={() => updateStatus(item.id, "in progress")}>In Progress</button>
                         <button onClick={() => updateStatus(item.id, "served")}>Checked In</button>
@@ -2032,6 +2177,7 @@ function AdminViewer() {
                 <th>Check-In Time</th>
                 <th>Status</th>
                 <th>Picking up for</th>
+                <th>Site</th>
               </tr>
             </thead>
             <tbody>
@@ -2070,6 +2216,11 @@ function AdminViewer() {
                           return item.household || '';
                         }
                       })()}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: '12px' }}>
+                      {item.location || item.formData?.location || 'N/A'}
                     </div>
                   </td>
                 </tr>
