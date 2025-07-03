@@ -192,33 +192,126 @@ export default function RegistrationForm() {
 
   // Function to handle updating an existing registration
   const updateExistingRegistration = async (existingReg, newFormData) => {
+    console.log('🔄 updateExistingRegistration called with:');
+    console.log('🔄 existingReg:', existingReg);
+    console.log('🔄 newFormData:', newFormData);
+    console.log('🔄 isRenewal:', isRenewal);
+    
     try {
-      const signature = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
+      // Validate inputs
+      if (!existingReg) {
+        throw new Error('existingReg is null or undefined');
+      }
       
-      // Preserve existing TEFAP data if it exists, otherwise set default values
-      const existingTefapDate = existingReg.formData?.tefapDate;
-      const existingTefapEligible = existingReg.formData?.tefapEligible;
+      if (!existingReg.id) {
+        throw new Error('existingReg.id is missing');
+      }
+      
+      if (!sigRef.current) {
+        throw new Error('Signature canvas is not available');
+      }
+      
+      const signature = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
+      console.log('🔄 Signature captured successfully');
+      
+      // For TEFAP renewals, update the TEFAP date to current date
+      // For regular updates, preserve existing TEFAP data
+      let tefapDate, tefapEligible;
+      
+      if (isRenewal) {
+        // This is a TEFAP renewal - update TEFAP date to current date
+        tefapDate = new Date().toISOString().slice(0, 10);
+        tefapEligible = existingReg.formData?.tefapEligible !== undefined ? existingReg.formData.tefapEligible : false;
+        console.log('🔄 TEFAP Renewal - updating TEFAP date to:', tefapDate);
+      } else {
+        // Regular update - preserve existing TEFAP data
+        tefapDate = existingReg.formData?.tefapDate || new Date().toISOString().slice(0, 10);
+        tefapEligible = existingReg.formData?.tefapEligible !== undefined ? existingReg.formData.tefapEligible : false;
+      }
       
       const formWithSignature = { 
         ...newFormData, 
         signature,
-        // Preserve existing TEFAP data or set defaults for first-time updates
-        tefapDate: existingTefapDate || new Date().toISOString().slice(0, 10),
-        tefapEligible: existingTefapEligible !== undefined ? existingTefapEligible : false
+        tefapDate: tefapDate,
+        tefapEligible: tefapEligible,
+        // CRITICAL: Preserve the original Firestore document ID
+        id: existingReg.formData?.id || existingReg.id
       };
 
-      // Update the existing registration with new data
-      await updateDoc(doc(db, 'registrations', existingReg.id), {
+      console.log('🔄 Preserving original ID:', existingReg.formData?.id || existingReg.id);
+      console.log('🔄 Updating registration with document ID:', existingReg.id);
+      console.log('🔄 Form data being saved:', formWithSignature);
+
+      // Prepare the update data
+      const updateData = {
         formData: formWithSignature,
         updatedAt: Timestamp.now(),
         originalSubmittedAt: existingReg.submittedAt // Preserve original submission date
-      });
+      };
 
-      alert("Registration updated successfully with new information!");
+      // If this is a TEFAP renewal, also update the lastCheckIn timestamp
+      if (isRenewal) {
+        updateData.lastCheckIn = Timestamp.now();
+        console.log('🔄 TEFAP Renewal - also updating lastCheckIn timestamp');
+      }
+
+      console.log('🔄 Complete update data being sent to Firestore:', updateData);
+      console.log('🔄 About to call updateDoc with collection "registrations" and document ID:', existingReg.id);
+
+      // Update the existing registration with new data (single update operation)
+      await updateDoc(doc(db, 'registrations', existingReg.id), updateData);
+
+      console.log('✅ Registration updated successfully with TEFAP date:', tefapDate);
+
+      // If this is a TEFAP renewal, add them to the check-in queue
+      if (isRenewal) {
+        try {
+          console.log('🔄 TEFAP Renewal - Adding to check-in queue');
+          
+          // Create a check-in record
+          await addDoc(collection(db, 'checkins'), {
+            registrationId: existingReg.id,
+            checkInTime: Timestamp.now(),
+            formData: {
+              id: formWithSignature.id,
+              firstName: formWithSignature.firstName,
+              lastName: formWithSignature.lastName,
+              household: parseInt(formWithSignature.children) + parseInt(formWithSignature.adults) + parseInt(formWithSignature.seniors)
+            }
+          });
+
+          console.log('✅ TEFAP Renewal - Successfully added to check-in queue');
+        } catch (checkInError) {
+          console.error('❌ Error adding to check-in queue:', checkInError);
+          console.error('❌ Check-in error details:', checkInError.message, checkInError.code);
+          // Don't fail the whole process if check-in fails
+        }
+      }
+
+      const successMessage = isRenewal 
+        ? "TEFAP registration renewed successfully! You have been automatically checked in and added to the queue."
+        : "Registration updated successfully with new information!";
+      
+      alert(successMessage);
       return true;
     } catch (error) {
-      console.error("Error updating registration:", error);
-      alert("An error occurred while updating the registration.");
+      console.error("❌ Error updating registration - FULL ERROR DETAILS:");
+      console.error("❌ Error message:", error.message);
+      console.error("❌ Error code:", error.code);
+      console.error("❌ Error stack:", error.stack);
+      console.error("❌ Full error object:", error);
+      
+      // More specific error message
+      let userMessage = "An error occurred while updating the registration.";
+      if (error.message.includes('permission')) {
+        userMessage = "Permission denied. Please check your authentication.";
+      } else if (error.message.includes('not-found')) {
+        userMessage = "Registration not found. Please try again.";
+      } else if (error.message.includes('network')) {
+        userMessage = "Network error. Please check your connection and try again.";
+      }
+      
+      alert(userMessage + " Check console for details.");
       return false;
     }
   };
@@ -540,7 +633,35 @@ export default function RegistrationForm() {
 
       console.log('✅ Signature validated');
 
-      // Check for duplicate registrations
+      // Handle TEFAP renewals differently - we know exactly which registration to update
+      if (isRenewal) {
+        console.log('🔄 TEFAP Renewal detected - bypassing duplicate check and updating directly');
+        
+        // For TEFAP renewals, we should have stored the original registration data
+        const originalRegistrationData = sessionStorage.getItem('currentRegistrationData');
+        if (originalRegistrationData) {
+          try {
+            const originalReg = JSON.parse(originalRegistrationData);
+            console.log('🔄 Found original registration data for renewal:', originalReg.formData?.id);
+            
+            const success = await updateExistingRegistration(originalReg, form);
+            if (success) {
+              // Clear the stored registration data
+              sessionStorage.removeItem('currentRegistrationData');
+              resetForm();
+            }
+            return;
+          } catch (parseError) {
+            console.error('Error parsing original registration data:', parseError);
+            // Fall back to duplicate check if we can't parse the stored data
+          }
+        } else {
+          console.warn('⚠️ TEFAP Renewal detected but no original registration data found in sessionStorage');
+          // Fall back to duplicate check
+        }
+      }
+
+      // Check for duplicate registrations (for regular registrations or fallback)
       let duplicates = [];
       try {
         duplicates = await checkForDuplicates(form);
@@ -550,10 +671,20 @@ export default function RegistrationForm() {
       }
       
       if (duplicates.length > 0) {
-        // Found potential duplicates - show dialog to user
-        setExistingRegistration(duplicates[0]); // Use the first match
-        setShowDuplicateDialog(true);
-        return;
+        if (isRenewal) {
+          // This is a TEFAP renewal fallback - automatically update the existing registration
+          console.log('🔄 TEFAP Renewal fallback - automatically updating existing registration');
+          const success = await updateExistingRegistration(duplicates[0], form);
+          if (success) {
+            resetForm();
+          }
+          return;
+        } else {
+          // Found potential duplicates - show dialog to user for regular registrations
+          setExistingRegistration(duplicates[0]); // Use the first match
+          setShowDuplicateDialog(true);
+          return;
+        }
       }
 
       // No duplicates found, proceed with new registration
@@ -586,6 +717,8 @@ export default function RegistrationForm() {
     sigRef.current.clear();
     setExistingRegistration(null);
     setShowDuplicateDialog(false);
+    setIsRenewal(false); // Reset renewal state
+    setShowRenewalMessage(false); // Reset renewal message state
     
     // Scroll to top of page after successful submission
     window.scrollTo({

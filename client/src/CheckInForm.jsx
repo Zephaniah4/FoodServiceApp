@@ -49,10 +49,16 @@ export default function CheckInForm() {
       if (!querySnapshot.empty) {
         const docRef = querySnapshot.docs[0].ref;
         const docData = querySnapshot.docs[0].data();
+        const docId = querySnapshot.docs[0].id;
         console.log("Found registration:", docData);
 
         // Store registration data for potential pre-population if TEFAP expires
-        sessionStorage.setItem('currentRegistrationData', JSON.stringify(docData));
+        // Include the document ID so it can be used for updates
+        const registrationWithId = {
+          ...docData,
+          id: docId
+        };
+        sessionStorage.setItem('currentRegistrationData', JSON.stringify(registrationWithId));
 
         // Check TEFAP date expiration (1 year)
         const tefapDate = docData.formData?.tefapDate;
