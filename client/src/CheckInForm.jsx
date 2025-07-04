@@ -124,7 +124,7 @@ export default function CheckInForm() {
         console.log("No matching registration found.");
       }
     } catch (error) {
-      setStatus('Error checking in. Please try again.');
+      setStatus(t('checkin.error'));
       console.error("Check-in error:", error);
     }
 
