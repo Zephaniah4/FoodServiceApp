@@ -68,7 +68,6 @@
     "language": "Idioma",
     "alreadyCheckedIn": "¡Ya se ha registrado!",
     "noMatchingRecord": "No se encontró ningún registro coincidente.",
-    "checkinConfirmed": "Bienvenido, {{name}}. Gracias por registrarte.",
     "checkinError": "Ocurrió un error al registrarse. Por favor, inténtelo de nuevo más tarde.",
     "welcome": "Bienvenido",
     "welcomeMessage": "¡Bienvenido, {{firstName}}! Gracias por registrarse.",

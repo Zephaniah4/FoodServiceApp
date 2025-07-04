@@ -68,7 +68,6 @@
     "language": "Language",
     "alreadyCheckedIn": "You have already Checked In!",
     "noMatchingRecord": "No matching record found.",
-    "checkinConfirmed": "Welcome, {{name}}.  Thank you for checking in.",
     "checkinError": "An error occurred while checking in. Please try again later.",
     "welcome": "Welcome",
     "welcomeMessage": "Welcome, {{firstName}}! Thank you for checking in.",

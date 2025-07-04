@@ -5,10 +5,9 @@ import { collection, addDoc, query, where, getDocs, updateDoc, Timestamp } from 
 import { useTranslation } from 'react-i18next';
 import './i18n';
 import './CheckInForm.css'; // Import the new CSS file
+import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import DateOfBirthPicker from './components/DateOfBirthPicker';
-import { DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
 
 export default function CheckInForm() {
@@ -241,10 +240,10 @@ export default function CheckInForm() {
           </>
         )}
 
-          <button type="submit" className="submit-button" disabled={loading}> {/* Apply the submit-button class */}
-            {loading ? t('checkin.checkingIn') : t('checkin.checkIn')}
-          </button>
-        </form>
+        <button type="submit" className="submit-button" disabled={loading}> {/* Apply the submit-button class */}
+          {loading ? t('checkin.checkingIn') : t('checkin.checkIn')}
+        </button>
+      </form>
 
       {status && (
         <div
