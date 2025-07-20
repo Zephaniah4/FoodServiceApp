@@ -171,6 +171,52 @@ function AdminViewer() {
   const [queueSortField, setQueueSortField] = useState('checkInTime');
   const [queueSortDirection, setQueueSortDirection] = useState('desc');
 
+  // Helper function to convert date from MM-DD-YYYY to YYYY-MM-DD format for HTML date input
+  const convertDateForInput = (dateString) => {
+    if (!dateString) return '';
+    
+    // If already in YYYY-MM-DD format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // If in MM-DD-YYYY format, convert to YYYY-MM-DD
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
+      const [month, day, year] = dateString.split('-');
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Try to parse other formats
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (error) {
+      console.warn('Date conversion failed for:', dateString);
+    }
+    
+    return dateString; // Return original if conversion fails
+  };
+
+  // Helper function to convert date from YYYY-MM-DD back to MM-DD-YYYY format for storage
+  const convertDateForStorage = (dateString) => {
+    if (!dateString) return '';
+    
+    // If already in MM-DD-YYYY format, return as is
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // If in YYYY-MM-DD format, convert to MM-DD-YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-');
+      return `${month}-${day}-${year}`;
+    }
+    
+    return dateString; // Return original if conversion fails
+  };
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       setUser(user);
@@ -2278,8 +2324,8 @@ function AdminViewer() {
                     <label>{t('dob')}
                       <input
                         type="date"
-                        value={editedFormFields[selectedRegistration.id]?.dateOfBirth || selectedRegistration.formData?.dateOfBirth || ''}
-                        onChange={(e) => handleFormFieldChange(selectedRegistration.id, 'dateOfBirth', e.target.value)}
+                        value={convertDateForInput(editedFormFields[selectedRegistration.id]?.dateOfBirth || selectedRegistration.formData?.dateOfBirth || '')}
+                        onChange={(e) => handleFormFieldChange(selectedRegistration.id, 'dateOfBirth', convertDateForStorage(e.target.value))}
                         style={{ width: '100%', padding: '4px', marginTop: '4px' }}
                       />
                     </label>
@@ -2338,11 +2384,11 @@ function AdminViewer() {
                         style={{ width: '100%', padding: '4px', marginTop: '4px' }}
                       >
                         <option value="">Select Race</option>
-                        <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
-                        <option value="Asian">Asian</option>
-                        <option value="Black or African American">Black or African American</option>
-                        <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
                         <option value="Caucasian">Caucasian</option>
+                        <option value="Black">Black</option>
+                        <option value="Latino">Latino</option>
+                        <option value="Asian">Asian</option>
+                        <option value="Native">Native</option>
                         <option value="Other">Other</option>
                       </select>
                     </label>
@@ -2353,8 +2399,8 @@ function AdminViewer() {
                         style={{ width: '100%', padding: '4px', marginTop: '4px' }}
                       >
                         <option value="">Select Ethnicity</option>
-                        <option value="Hispanic or Latino">Hispanic or Latino</option>
-                        <option value="Not Hispanic or Latino">Not Hispanic or Latino</option>
+                        <option value="Hispanic">Hispanic</option>
+                        <option value="Non-Hispanic">Non-Hispanic</option>
                       </select>
                     </label>
                     <label>{t('sex')}
@@ -2431,16 +2477,13 @@ function AdminViewer() {
                   <h3>Language & Country of Birth</h3>
                   <div className="form-grid">
                     <label>Preferred Language
-                      <select
+                      <input
+                        type="text"
                         value={editedFormFields[selectedRegistration.id]?.language || selectedRegistration.formData?.language || ''}
                         onChange={(e) => handleFormFieldChange(selectedRegistration.id, 'language', e.target.value)}
                         style={{ width: '100%', padding: '4px', marginTop: '4px' }}
-                      >
-                        <option value="">Select Language</option>
-                        <option value="English">English</option>
-                        <option value="Spanish">Spanish</option>
-                        <option value="Other">Other</option>
-                      </select>
+                        placeholder="Enter preferred language"
+                      />
                     </label>
                     <label>Country of Birth
                       <input

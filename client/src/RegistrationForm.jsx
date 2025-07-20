@@ -270,13 +270,19 @@ export default function RegistrationForm() {
           
           // Create a check-in record
           await addDoc(collection(db, 'checkins'), {
+            userId: formWithSignature.id,
+            name: `${formWithSignature.firstName} ${formWithSignature.lastName}`,
             registrationId: existingReg.id,
             checkInTime: Timestamp.now(),
+            status: "waiting",
+            phone: formWithSignature.phone || '',
+            household: formWithSignature.household || '',
+            location: formWithSignature.location || '',
             formData: {
               id: formWithSignature.id,
               firstName: formWithSignature.firstName,
               lastName: formWithSignature.lastName,
-              household: parseInt(formWithSignature.children) + parseInt(formWithSignature.adults) + parseInt(formWithSignature.seniors)
+              location: formWithSignature.location || ''
             }
           });
 
