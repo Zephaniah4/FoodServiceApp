@@ -1813,21 +1813,21 @@ function AdminViewer() {
             <tbody>
               {filteredRegistrations.map(reg => (
                 <tr key={reg.id}>
-                  <td>
+                  <td data-label="Name">
                     {reg.formData?.firstName} {reg.formData?.lastName}
                   </td>
-                  <td>
+                  <td data-label="ID">
                     <input
                       value={editedIds[reg.id] !== undefined ? editedIds[reg.id] : reg.formData?.id || ""}
                       onChange={e => handleIdChange(reg.id, e.target.value)}
                       style={{ width: "100px" }}
                     />
                   </td>
-                  <td>{reg.formData?.dateOfBirth}</td>
-                  <td>{reg.formData?.phone}</td>
-                  <td>{reg.formData?.address}</td>
-                  <td>{reg.formData?.apartment || ''}</td>
-                  <td>
+                  <td data-label="Date of Birth">{reg.formData?.dateOfBirth}</td>
+                  <td data-label="Phone">{reg.formData?.phone}</td>
+                  <td data-label="Address">{reg.formData?.address}</td>
+                  <td data-label="APT #">{reg.formData?.apartment || ''}</td>
+                  <td data-label="Picking up for">
                     <div style={{ position: 'relative' }}>
                       {!householdEditorOpen[reg.id] ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -2021,7 +2021,7 @@ function AdminViewer() {
                       )}
                     </div>
                   </td>
-                  <td>
+                  <td data-label="TEFAP">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '120px' }}>
                       <input
                         type="date"
@@ -2039,7 +2039,7 @@ function AdminViewer() {
                       />
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Site">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <select
                         value={editedLocations[reg.id] !== undefined ? editedLocations[reg.id] : (reg.formData?.location || '')}
@@ -2074,22 +2074,22 @@ function AdminViewer() {
                       </button>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Served">
                     {showArchived ? (
                       <button 
                         onClick={() => unarchiveRegistration(reg.id)}
                         className="served-button"
                         style={{
-                          padding: "16px 24px",
-                          fontSize: "16px",
-                          fontWeight: "bold",
                           backgroundColor: "#FF9800",
                           color: "white",
                           border: "none",
                           borderRadius: "6px",
                           cursor: "pointer",
-                          minWidth: "120px",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                          fontSize: "22px",
+                          fontWeight: "bold",
+                          padding: "16px 32px",
+                          minWidth: "140px"
                         }}
                       >
                         Queue
@@ -2099,23 +2099,23 @@ function AdminViewer() {
                         onClick={() => archiveRegistration(reg.id)}
                         className="served-button"
                         style={{
-                          padding: "16px 24px",
-                          fontSize: "16px",
-                          fontWeight: "bold",
                           backgroundColor: "#4CAF50",
                           color: "white",
                           border: "none",
                           borderRadius: "6px",
                           cursor: "pointer",
-                          minWidth: "120px",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                          fontSize: "22px",
+                          fontWeight: "bold",
+                          padding: "16px 32px",
+                          minWidth: "140px"
                         }}
                       >
                         Served
                       </button>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Actions">
                     <div className="action-buttons">
                       <button onClick={() => viewRegistrationForm(reg)}>View Form</button>
                       <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
@@ -2214,18 +2214,18 @@ function AdminViewer() {
               <tbody>
                 {sortedQueue.map((item, idx) => (
                   <tr key={item.id}>
-                    <td>{item.userId || item.formData?.id || item.id}</td>
-                    <td>{item.formData?.firstName && item.formData?.lastName 
+                    <td data-label="ID">{item.userId || item.formData?.id || item.id}</td>
+                    <td data-label="Name">{item.formData?.firstName && item.formData?.lastName 
                         ? `${item.formData.firstName} ${item.formData.lastName}` 
                         : item.name}</td>
-                    <td>
+                    <td data-label="Check-In Time">
                       {item.checkInTime?.seconds
                         ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()
                         : ""}
                     </td>
-                    <td>{item.status}</td>
-                    <td>{item.status === "waiting" ? idx + 1 : "-"}</td>
-                    <td>
+                    <td data-label="Status">{item.status}</td>
+                    <td data-label="Position">{item.status === "waiting" ? idx + 1 : "-"}</td>
+                    <td data-label="Picking up for">
                       <div style={{ fontSize: '12px', maxWidth: '150px' }}>
                         {(() => {
                           try {
@@ -2250,7 +2250,7 @@ function AdminViewer() {
                         })()}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Site">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                         <select
                           value={editedLocations[item.id] !== undefined ? editedLocations[item.id] : (item.location || item.formData?.location || '')}
@@ -2285,29 +2285,29 @@ function AdminViewer() {
                         </button>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Served">
                       <button 
                         onClick={() => removeCheckinWithConfirmation(item.id, item.formData?.firstName && item.formData?.lastName 
                           ? `${item.formData.firstName} ${item.formData.lastName}` 
                           : item.name)}
                         className="served-button"
                         style={{
-                          padding: "16px 24px",
-                          fontSize: "16px",
-                          fontWeight: "bold",
                           backgroundColor: "#4CAF50",
                           color: "white",
                           border: "none",
                           borderRadius: "6px",
                           cursor: "pointer",
-                          minWidth: "120px",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                          fontSize: "22px",
+                          fontWeight: "bold",
+                          padding: "16px 32px",
+                          minWidth: "140px"
                         }}
                       >
                         Serve
                       </button>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                       <div className="action-buttons">
                         <button onClick={() => updateStatus(item.id, "in progress")}>In Progress</button>
                         <button 

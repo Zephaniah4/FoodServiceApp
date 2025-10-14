@@ -654,9 +654,35 @@ input[type="date"]:focus {
   }
 }
 
+/* Tablet styles */
+@media (max-width: 1024px) {
+  .admin-container {
+    padding: 20px 15px;
+  }
+  
+  .admin-table {
+    font-size: 13px;
+  }
+  
+  .filter-container {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .filter-container > div {
+    min-width: 200px;
+  }
+  
+  /* Make inputs more touch-friendly on tablets */
+  input, select {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
 @media (max-width: 768px) {
   .admin-container {
-    padding: 15px;
+    padding: 15px 10px;
   }
   
   .logout-button {
@@ -667,30 +693,258 @@ input[type="date"]:focus {
   .filter-container {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .filter-container > div {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
   }
   
   .filter-container select,
   .filter-container input {
     min-width: auto;
     width: 100%;
+    padding: 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
   }
   
+  /* Mobile Table Container */
+  .admin-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-radius: 8px;
+  }
+  
+  .admin-table thead,
+  .admin-table tbody,
+  .admin-table th,
+  .admin-table td,
+  .admin-table tr {
+    display: block;
+  }
+  
+  .admin-table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  .admin-table tr {
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative;
+  }
+  
+  .admin-table td {
+    border: none;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 8px 0;
+    text-align: left;
+    white-space: normal;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    min-height: 30px;
+  }
+  
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+  
+  .admin-table td:before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #333;
+    flex-shrink: 0;
+    width: 35%;
+    padding-right: 10px;
+    border-right: 1px solid #e0e0e0;
+    margin-right: 10px;
+  }
+  
+  .admin-table td > * {
+    flex: 1;
+    text-align: left;
+  }
+  
+  /* Mobile Action Buttons */
   .action-buttons {
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
+    width: 100%;
   }
   
   .action-buttons button {
     width: 100%;
     min-width: auto;
+    padding: 12px;
+    font-size: 14px;
+    text-align: center;
+  }
+  
+  /* Mobile Served Button - Higher Specificity */
+  .admin-table .served-button,
+  .served-button {
+    width: 100% !important;
+    padding: 20px 32px !important;
+    font-size: 24px !important;
+    font-weight: bold !important;
+    min-width: auto !important;
+    margin: 8px 0 !important;
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Special styling for served button containers */
+  .admin-table td[data-label="Served"] {
+    justify-content: center !important;
+    align-items: center !important;
+    flex-direction: column !important;
+  }
+  
+  .admin-table td[data-label="Served"]:before {
+    width: 100% !important;
+    text-align: center !important;
+    border-right: none !important;
+    margin-right: 0 !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+  }
+  
+  /* Mobile Search and Filter */
+  .admin-heading {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+  
+  /* Mobile Modal Adjustments */
+  .modal-content {
+    width: 98%;
+    max-height: 95vh;
+    margin: 10px;
+  }
+  
+  .modal-header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .modal-actions {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  /* Mobile Form Grid */
+  .form-container-modal .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Improved mobile input fields */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    padding: 12px !important;
+  }
+  
+  /* Mobile-specific household editing */
+  .admin-table input[style*="width: 100px"] {
+    width: 100% !important;
+    min-width: auto !important;
+  }
+  
+  /* Mobile location selects */
+  .admin-table select {
+    width: 100% !important;
+    min-width: auto !important;
+    margin-bottom: 8px;
   }
 }
 
 /* Extra small screens - ultra compact */
 @media (max-width: 480px) {
+  .admin-container {
+    padding: 10px 5px;
+  }
+  
   .logout-button {
     font-size: 0.9rem;
     padding: 0.4rem 0.8rem;
+  }
+  
+  .admin-heading {
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+  
+  /* Ultra compact table cards */
+  .admin-table tr {
+    margin-bottom: 12px;
+    padding: 12px;
+  }
+  
+  .admin-table td {
+    padding: 6px 0;
+  }
+  
+  .admin-table td:before {
+    width: 40%;
+    font-size: 14px;
+  }
+  
+  /* Ultra compact buttons */
+  .action-buttons button {
+    padding: 10px;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  
+  .admin-table .served-button,
+  .served-button {
+    padding: 18px 28px !important;
+    font-size: 20px !important;
+    font-weight: bold !important;
+    text-align: center !important;
+  }
+  
+  /* Modal adjustments for small screens */
+  .modal-content {
+    width: 100%;
+    height: 100vh;
+    max-height: none;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  .modal-header {
+    padding: 0.75rem;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  /* Filter inputs */
+  .filter-container input,
+  .filter-container select {
+    padding: 14px;
+    font-size: 16px;
+  }
+  
+  /* Search inputs need larger touch targets */
+  input[style*="width: 300px"] {
+    width: 100% !important;
+    min-width: auto !important;
   }
 }
 
@@ -702,27 +956,39 @@ input[type="date"]:focus {
   }
 }
 
-/* Served Button Styling */
+/* Served Button Styling - Higher Specificity */
+.admin-table .served-button,
 .served-button {
-  transition: all 0.3s ease;
-  transform: scale(1);
+  transition: all 0.3s ease !important;
+  transform: scale(1) !important;
+  padding: 16px 32px !important;
+  font-size: 22px !important;
+  font-weight: bold !important;
+  min-width: 140px !important;
+  text-align: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
+.admin-table .served-button:hover,
 .served-button:hover {
-  transform: scale(1.05) translateY(-2px);
+  transform: scale(1.05) translateY(-2px) !important;
   box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
 }
 
+.admin-table .served-button:active,
 .served-button:active {
-  transform: scale(0.98);
+  transform: scale(0.98) !important;
 }
 
 /* Responsive served button */
 @media (max-width: 1200px) {
+  .admin-table .served-button,
   .served-button {
-    padding: 12px 18px !important;
-    font-size: 14px !important;
-    min-width: 100px !important;
+    padding: 14px 24px !important;
+    font-size: 20px !important;
+    min-width: 120px !important;
   }
 }
 
