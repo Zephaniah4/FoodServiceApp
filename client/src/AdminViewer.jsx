@@ -277,6 +277,22 @@ function AdminViewer() {
     await updateDoc(doc(db, "checkins", id), { status: "removed" });
   };
 
+  const removeCheckinWithConfirmation = async (id, name) => {
+    const confirmMessage = `Are you sure you want to mark "${name}" as served?\n\nThis will remove them from the check-in queue.`;
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        await removeCheckin(id);
+        setSaveMessage("Check-in marked as served successfully!");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } catch (error) {
+        console.error("Error marking check-in as served:", error);
+        setSaveMessage("Error marking check-in as served. Please try again.");
+        setTimeout(() => setSaveMessage(""), 3000);
+      }
+    }
+  };
+
   const deleteCheckin = async (checkinId, checkinName) => {
     const confirmMessage = `Are you sure you want to permanently delete the check-in for "${checkinName}"?\n\nThis action cannot be undone and will remove the check-in from the database completely.`;
     
@@ -343,6 +359,45 @@ function AdminViewer() {
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
       console.error("Error saving location:", error);
+      setSaveMessage("Error saving location!");
+      setTimeout(() => setSaveMessage(""), 3000);
+    }
+  };
+
+  const saveCheckinLocation = async (checkinId, userId, currentLocation) => {
+    const newLocation = editedLocations[checkinId] !== undefined ? editedLocations[checkinId] : currentLocation || "";
+
+    try {
+      // Update the checkin document directly
+      await updateDoc(doc(db, "checkins", checkinId), {
+        location: newLocation,
+        "formData.location": newLocation
+      });
+
+      // Also try to update the corresponding registration if it exists
+      try {
+        const registrationsQuery = query(
+          collection(db, "registrations"),
+          where("formData.id", "==", userId)
+        );
+        const snapshot = await getDocs(registrationsQuery);
+        
+        if (!snapshot.empty) {
+          const updates = snapshot.docs.map(d => {
+            return updateDoc(doc(db, "registrations", d.id), {
+              "formData.location": newLocation
+            });
+          });
+          await Promise.all(updates);
+        }
+      } catch (regError) {
+        console.log("No corresponding registration found or error updating:", regError);
+      }
+
+      setSaveMessage("Location saved successfully!");
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (error) {
+      console.error("Error saving checkin location:", error);
       setSaveMessage("Error saving location!");
       setTimeout(() => setSaveMessage(""), 3000);
     }
@@ -1751,6 +1806,7 @@ function AdminViewer() {
                 <th>Picking up for</th>
                 <th>{t('tefap')}</th>
                 <th>Site</th>
+                <th>Served</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -2019,12 +2075,48 @@ function AdminViewer() {
                     </div>
                   </td>
                   <td>
+                    {showArchived ? (
+                      <button 
+                        onClick={() => unarchiveRegistration(reg.id)}
+                        className="served-button"
+                        style={{
+                          padding: "16px 24px",
+                          fontSize: "16px",
+                          fontWeight: "bold",
+                          backgroundColor: "#FF9800",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          minWidth: "120px",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                        }}
+                      >
+                        Queue
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => archiveRegistration(reg.id)}
+                        className="served-button"
+                        style={{
+                          padding: "16px 24px",
+                          fontSize: "16px",
+                          fontWeight: "bold",
+                          backgroundColor: "#4CAF50",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          minWidth: "120px",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                        }}
+                      >
+                        Served
+                      </button>
+                    )}
+                  </td>
+                  <td>
                     <div className="action-buttons">
-                      {showArchived ? (
-                        <button onClick={() => unarchiveRegistration(reg.id)}>Queue</button>
-                      ) : (
-                        <button onClick={() => archiveRegistration(reg.id)}>Served</button>
-                      )}
                       <button onClick={() => viewRegistrationForm(reg)}>View Form</button>
                       <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
                       <button onClick={() => saveHousehold(reg.id, reg.formData?.id, editedHouseholds[reg.id] ?? reg.formData?.household)}>
@@ -2115,6 +2207,7 @@ function AdminViewer() {
                   <th>Position</th>
                   <th>Picking up for</th>
                   <th>Site</th>
+                  <th>Served</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -2177,7 +2270,7 @@ function AdminViewer() {
                           <option value="Both">Both</option>
                         </select>
                         <button
-                          onClick={() => saveLocation(item.id, item.userId || item.formData?.id || item.id, item.location || item.formData?.location)}
+                          onClick={() => saveCheckinLocation(item.id, item.userId || item.formData?.id || item.id, item.location || item.formData?.location)}
                           style={{
                             padding: "1px 4px",
                             backgroundColor: "#2196F3",
@@ -2193,10 +2286,30 @@ function AdminViewer() {
                       </div>
                     </td>
                     <td>
+                      <button 
+                        onClick={() => removeCheckinWithConfirmation(item.id, item.formData?.firstName && item.formData?.lastName 
+                          ? `${item.formData.firstName} ${item.formData.lastName}` 
+                          : item.name)}
+                        className="served-button"
+                        style={{
+                          padding: "16px 24px",
+                          fontSize: "16px",
+                          fontWeight: "bold",
+                          backgroundColor: "#4CAF50",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          minWidth: "120px",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                        }}
+                      >
+                        Serve
+                      </button>
+                    </td>
+                    <td>
                       <div className="action-buttons">
                         <button onClick={() => updateStatus(item.id, "in progress")}>In Progress</button>
-                        <button onClick={() => updateStatus(item.id, "served")}>Checked In</button>
-                        <button onClick={() => removeCheckin(item.id)}>Serve</button>
                         <button 
                           onClick={() => deleteCheckin(item.id, item.name)}
                           className="delete-button"
