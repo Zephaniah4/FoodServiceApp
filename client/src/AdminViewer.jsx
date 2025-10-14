@@ -2200,8 +2200,8 @@ function AdminViewer() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Name</th>
+                  <th>ID</th>
                   <th>Check-In Time</th>
                   <th>Status</th>
                   <th>Position</th>
@@ -2214,10 +2214,10 @@ function AdminViewer() {
               <tbody>
                 {sortedQueue.map((item, idx) => (
                   <tr key={item.id}>
-                    <td data-label="ID">{item.userId || item.formData?.id || item.id}</td>
                     <td data-label="Name">{item.formData?.firstName && item.formData?.lastName 
                         ? `${item.formData.firstName} ${item.formData.lastName}` 
                         : item.name}</td>
+                    <td data-label="ID">{item.userId || item.formData?.id || item.id}</td>
                     <td data-label="Check-In Time">
                       {item.checkInTime?.seconds
                         ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()
@@ -2334,8 +2334,8 @@ function AdminViewer() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Name</th>
+                <th>ID</th>
                 <th>Check-In Time</th>
                 <th>Status</th>
                 <th>Picking up for</th>
@@ -2345,10 +2345,10 @@ function AdminViewer() {
             <tbody>
               {archivedQueueFiltered.map((item, idx) => (
                 <tr key={item.id}>
-                  <td>{item.userId || item.formData?.id || item.id}</td>
                   <td>{item.formData?.firstName && item.formData?.lastName 
                       ? `${item.formData.firstName} ${item.formData.lastName}` 
                       : item.name}</td>
+                  <td>{item.userId || item.formData?.id || item.id}</td>
                   <td>
                     {item.checkInTime?.seconds
                       ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()

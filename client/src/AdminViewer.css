@@ -956,6 +956,55 @@ input[type="date"]:focus {
   }
 }
 
+/* Name Column Styling - Bold and 25% Larger */
+.admin-table td[data-label="Name"] {
+  font-weight: bold !important;
+  font-size: 17.5px !important; /* 25% larger than base 14px */
+  color: #2c3e50 !important;
+}
+
+/* ID Column Styling - Unbold */
+.admin-table td[data-label="ID"] {
+  font-weight: normal !important;
+  font-size: 14px !important;
+  color: #666 !important;
+}
+
+/* Enhanced Name styling for mobile */
+@media (max-width: 768px) {
+  .admin-table td[data-label="Name"] {
+    font-size: 16px !important; /* 25% larger than mobile base */
+  }
+  
+  .admin-table td[data-label="ID"] {
+    font-size: 13px !important;
+  }
+}
+
+/* Live Check-In Queue name styling - first column is now Name */
+.admin-table tbody tr td:first-child {
+  font-weight: bold !important;
+  font-size: 17.5px !important;
+  color: #2c3e50 !important;
+}
+
+/* Live Check-In Queue ID styling - second column is now ID */
+.admin-table tbody tr td:nth-child(2) {
+  font-weight: normal !important;
+  font-size: 14px !important;
+  color: #666 !important;
+}
+
+@media (max-width: 768px) {
+  .admin-table tbody tr td:first-child {
+    font-size: 16px !important;
+  }
+  
+  .admin-table tbody tr td:nth-child(2) {
+    font-size: 13px !important;
+  }
+}
+
 /* Served Button Styling - Higher Specificity */
 .admin-table .served-button,
 .served-button {
