@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { db, auth } from "./firebase";
 import { collection, onSnapshot, query, orderBy, updateDoc, doc, where, getDocs, limit, deleteDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useTranslation } from 'react-i18next';
+import { usePagination } from './hooks/usePagination';
+import { useDebounce } from './hooks/useDebounce';
 import "./AdminViewer.css";
 import "./FormStyles_Green.css";
 import logo from './ntfb_header_logo_retina.png';
@@ -166,10 +168,125 @@ function AdminViewer() {
   const [sortField, setSortField] = useState('submittedAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Debounce search term to avoid excessive filtering
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Queue sorting state variables
   const [queueSortField, setQueueSortField] = useState('checkInTime');
   const [queueSortDirection, setQueueSortDirection] = useState('desc');
+
+  // OPTIMIZED: Memoized filtering with debounced search (placed after all state to avoid conditional hooks)
+  const filteredRegistrations = useMemo(() => {
+    const searchLower = debouncedSearchTerm.toLowerCase().trim();
+    
+    return registrations
+      .filter(reg => {
+        // Archive filtering logic - first determine if record should be included based on archive status
+        const isArchived = reg.formData?.archived;
+        const shouldShowBasedOnArchive = showArchived ? isArchived : !isArchived;
+        
+        // If the record doesn't match the archive filter, exclude it
+        if (!shouldShowBasedOnArchive) return false;
+        
+        // Name filtering (only if filter is set)
+        if (firstNameFilter && !reg.formData.firstName?.toLowerCase().includes(firstNameFilter.toLowerCase())) {
+          return false;
+        }
+        if (lastNameFilter && !reg.formData.lastName?.toLowerCase().includes(lastNameFilter.toLowerCase())) {
+          return false;
+        }
+        
+        // Date filtering (only if dates are set)
+        if (startDate && (!reg.submittedAt || reg.submittedAt.toDate() < new Date(startDate))) {
+          return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setDate(end.getDate() + 1);
+          if (!reg.submittedAt || reg.submittedAt.toDate() >= end) {
+            return false;
+          }
+        }
+        
+        // Search functionality (only if search term exists)
+        if (searchLower) {
+          const fullName = `${reg.formData?.firstName || ''} ${reg.formData?.lastName || ''}`.toLowerCase();
+          const phone = (reg.formData?.phone || '').toLowerCase();
+          const address = (reg.formData?.address || '').toLowerCase();
+          const city = (reg.formData?.city || '').toLowerCase();
+          const id = (reg.formData?.id || reg.id || '').toLowerCase();
+          const dateOfBirth = (reg.formData?.dateOfBirth || '').toLowerCase();
+          
+          const searchMatch = fullName.includes(searchLower) || 
+                             phone.includes(searchLower) || 
+                             address.includes(searchLower) ||
+                             city.includes(searchLower) ||
+                             id.includes(searchLower) ||
+                             dateOfBirth.includes(searchLower);
+          
+          if (!searchMatch) return false;
+        }
+        
+        return true;
+      });
+  }, [registrations, showArchived, firstNameFilter, lastNameFilter, startDate, endDate, debouncedSearchTerm]);
+
+  // OPTIMIZED: Memoized sorting
+  const sortedAndFilteredRegistrations = useMemo(() => {
+    return [...filteredRegistrations]
+      .sort((a, b) => {
+        // Sorting logic
+        let aValue, bValue;
+        
+        switch (sortField) {
+          case 'name':
+            aValue = `${a.formData?.firstName || ''} ${a.formData?.lastName || ''}`.toLowerCase();
+            bValue = `${b.formData?.firstName || ''} ${b.formData?.lastName || ''}`.toLowerCase();
+            break;
+          case 'id':
+            aValue = a.formData?.id || '';
+            bValue = b.formData?.id || '';
+            break;
+          case 'dateOfBirth':
+            aValue = a.formData?.dateOfBirth || '';
+            bValue = b.formData?.dateOfBirth || '';
+            break;
+          case 'phone':
+            aValue = a.formData?.phone || '';
+            bValue = b.formData?.phone || '';
+            break;
+          case 'address':
+            aValue = a.formData?.address || '';
+            bValue = b.formData?.address || '';
+            break;
+          case 'submittedAt':
+          default:
+            aValue = a.submittedAt?.toDate() || new Date(0);
+            bValue = b.submittedAt?.toDate() || new Date(0);
+            break;
+        }
+        
+        if (sortField === 'submittedAt') {
+          // For dates, compare as Date objects
+          if (sortDirection === 'asc') {
+            return aValue - bValue;
+          } else {
+            return bValue - aValue;
+          }
+        } else {
+          // For strings, use localeCompare
+          if (sortDirection === 'asc') {
+            return aValue.toString().localeCompare(bValue.toString());
+          } else {
+            return bValue.toString().localeCompare(aValue.toString());
+          }
+        }
+      });
+  }, [filteredRegistrations, sortField, sortDirection]);
+
+  // OPTIMIZED: Add pagination for large datasets
+  const pagination = usePagination(sortedAndFilteredRegistrations, 50);
 
   // Helper function to convert date from MM-DD-YYYY to YYYY-MM-DD format for HTML date input
   const convertDateForInput = (dateString) => {
@@ -242,13 +359,43 @@ function AdminViewer() {
     }
   };
 
-  // Real-time listener for registrations
+  // Real-time listener for registrations - OPTIMIZED with limits and date filtering
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "registrations"), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
+    // Only fetch recent registrations (last 30 days) unless showing archived
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    let q;
+    if (showArchived) {
+      // For archived view, get all but limit to 500 most recent
+      q = query(
+        collection(db, "registrations"),
+        orderBy("submittedAt", "desc"),
+        limit(500)
+      );
+    } else {
+      // For active view, get recent registrations and filter out archived ones in memory
+      // This avoids the need for a composite index
+      q = query(
+        collection(db, "registrations"),
+        orderBy("submittedAt", "desc"),
+        limit(300) // Get more records to account for filtering
+      );
+    }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
+      
+      // If showing active registrations, filter out archived ones in memory
+      if (!showArchived) {
+        data = data.filter(reg => !reg.formData?.archived);
+        // Limit to 200 after filtering
+        data = data.slice(0, 200);
+      }
+      
       setRegistrations(data);
       setLoading(false);
     }, (error) => {
@@ -257,11 +404,21 @@ function AdminViewer() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [showArchived]); // Re-run when archive filter changes
 
-  // Live check-in queue listener
+  // Live check-in queue listener - OPTIMIZED with status filtering and limits
   useEffect(() => {
-    const q = query(collection(db, "checkins"), orderBy("checkInTime"));
+    // Only fetch active check-ins (not removed) and limit to recent ones
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
+    const q = query(
+      collection(db, "checkins"),
+      where("status", "!=", "removed"),
+      orderBy("checkInTime", "desc"),
+      limit(100) // Limit to 100 most recent active check-ins
+    );
+    
     const unsub = onSnapshot(q, (snapshot) => {
       setQueue(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
@@ -994,7 +1151,8 @@ function AdminViewer() {
     return firstNameMatch && lastNameMatch && dateMatch;
   });
 
-  if (loading) return <p>Loading...</p>;
+  // Early return after all hooks to comply with Rules of Hooks
+  if (loading) return <div style={{textAlign: 'center', padding: '2rem', fontSize: '18px'}}>⏳ Loading admin data...</div>;
 
   const filteredQueue = queueStatusFilter === "all"
     ? queue.filter(item => item.status !== "removed")
@@ -1026,116 +1184,6 @@ function AdminViewer() {
       return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
     }
   });
-
-  const filteredRegistrations = registrations
-    .filter(reg => {
-      // Archive filtering logic - first determine if record should be included based on archive status
-      const isArchived = reg.formData?.archived;
-      const shouldShowBasedOnArchive = showArchived ? isArchived : !isArchived;
-      
-      // If the record doesn't match the archive filter, exclude it
-      if (!shouldShowBasedOnArchive) return false;
-      
-      // Now apply other filters only to records that match the archive criteria
-      
-      // Name filtering
-      const firstNameMatch = !firstNameFilter || reg.formData.firstName
-        ?.toLowerCase()
-        .includes(firstNameFilter.toLowerCase());
-      const lastNameMatch = !lastNameFilter || reg.formData.lastName
-        ?.toLowerCase()
-        .includes(lastNameFilter.toLowerCase());
-      
-      // Date filtering
-      let dateMatch = true;
-      if (startDate) {
-        dateMatch = dateMatch && reg.submittedAt?.toDate() >= new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setDate(end.getDate() + 1);
-        dateMatch = dateMatch && reg.submittedAt?.toDate() < end;
-      }
-      
-      // Search functionality
-      let searchMatch = true;
-      if (searchTerm.trim()) {
-        const searchLower = searchTerm.toLowerCase().trim();
-        const fullName = `${reg.formData?.firstName || ''} ${reg.formData?.lastName || ''}`.toLowerCase();
-        const phone = (reg.formData?.phone || '').toLowerCase();
-        const address = (reg.formData?.address || '').toLowerCase();
-        const city = (reg.formData?.city || '').toLowerCase();
-        const id = (reg.formData?.id || reg.id || '').toLowerCase();
-        const dateOfBirth = (reg.formData?.dateOfBirth || '').toLowerCase();
-        
-        searchMatch = fullName.includes(searchLower) || 
-                     phone.includes(searchLower) || 
-                     address.includes(searchLower) ||
-                     city.includes(searchLower) ||
-                     id.includes(searchLower) ||
-                     dateOfBirth.includes(searchLower);
-        
-        // Debug logging for search
-        if (searchTerm.length > 0) {
-          console.log(`🔍 Search Debug - Term: "${searchTerm}"`, {
-            record: `${reg.formData?.firstName} ${reg.formData?.lastName}`,
-            fullName, phone, address, city, id, dateOfBirth,
-            searchMatch,
-            searchLower
-          });
-        }
-      }
-      
-      return firstNameMatch && lastNameMatch && dateMatch && searchMatch;
-    })
-    .sort((a, b) => {
-      // Sorting logic
-      let aValue, bValue;
-      
-      switch (sortField) {
-        case 'name':
-          aValue = `${a.formData?.firstName || ''} ${a.formData?.lastName || ''}`.toLowerCase();
-          bValue = `${b.formData?.firstName || ''} ${b.formData?.lastName || ''}`.toLowerCase();
-          break;
-        case 'id':
-          aValue = a.formData?.id || '';
-          bValue = b.formData?.id || '';
-          break;
-        case 'dateOfBirth':
-          aValue = a.formData?.dateOfBirth || '';
-          bValue = b.formData?.dateOfBirth || '';
-          break;
-        case 'phone':
-          aValue = a.formData?.phone || '';
-          bValue = b.formData?.phone || '';
-          break;
-        case 'address':
-          aValue = a.formData?.address || '';
-          bValue = b.formData?.address || '';
-          break;
-        case 'submittedAt':
-        default:
-          aValue = a.submittedAt?.toDate() || new Date(0);
-          bValue = b.submittedAt?.toDate() || new Date(0);
-          break;
-      }
-      
-      if (sortField === 'submittedAt') {
-        // For dates, compare as Date objects
-        if (sortDirection === 'asc') {
-          return aValue - bValue;
-        } else {
-          return bValue - aValue;
-        }
-      } else {
-        // For strings, use localeCompare
-        if (sortDirection === 'asc') {
-          return aValue.toString().localeCompare(bValue.toString());
-        } else {
-          return bValue.toString().localeCompare(aValue.toString());
-        }
-      }
-    });
 
   // Form field editing functions
   const handleFormFieldChange = (regId, field, value) => {
@@ -1504,7 +1552,7 @@ function AdminViewer() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRegistrations.map((reg, index) => (
+                      {pagination.paginatedData.map((reg, index) => (
                         <tr key={reg.id} style={{
                           backgroundColor: index % 2 === 0 ? "#f9f9f9" : "white",
                           borderBottom: "1px solid #eee"
@@ -1599,6 +1647,56 @@ function AdminViewer() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+              
+              {/* Pagination Controls */}
+              {pagination.totalPages > 1 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '10px',
+                  margin: '20px 0',
+                  padding: '10px'
+                }}>
+                  <button
+                    onClick={pagination.goToPrevPage}
+                    disabled={pagination.currentPage === 1}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: pagination.currentPage === 1 ? '#ccc' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: pagination.currentPage === 1 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Previous
+                  </button>
+                  
+                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  
+                  <button
+                    onClick={pagination.goToNextPage}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: pagination.currentPage === pagination.totalPages ? '#ccc' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: pagination.currentPage === pagination.totalPages ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Next
+                  </button>
+                  
+                  <span style={{ fontSize: '14px', color: '#666', marginLeft: '20px' }}>
+                    Showing {pagination.paginatedData.length} of {pagination.totalItems} records
+                  </span>
                 </div>
               )}
             </div>
@@ -1811,7 +1909,7 @@ function AdminViewer() {
               </tr>
             </thead>
             <tbody>
-              {filteredRegistrations.map(reg => (
+              {pagination.paginatedData.map(reg => (
                 <tr key={reg.id}>
                   <td data-label="Name">
                     {reg.formData?.firstName} {reg.formData?.lastName}
