@@ -40,6 +40,29 @@
   text-transform: uppercase;
 }
 
+.admin-table th.name-column {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.admin-table td.name-cell {
+  vertical-align: middle;
+}
+
+.admin-table td.name-cell .name-primary {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0d47a1;
+}
+
+@media (max-width: 600px) {
+  .admin-table td.name-cell .name-primary {
+    font-size: 1.05rem;
+  }
+}
+
 .admin-table tr:nth-child(even) td {
   background-color: #f9f9f9;
 }
@@ -761,12 +784,16 @@ input[type="date"]:focus {
   .admin-table td:before {
     content: attr(data-label);
     font-weight: bold;
-    color: #333;
+    color: #111;
     flex-shrink: 0;
     width: 35%;
     padding-right: 10px;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid #d0e3f9;
     margin-right: 10px;
+    background-color: #e3f2fd;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
   }
   
   .admin-table td > * {

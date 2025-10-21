@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { db, auth } from "./firebase";
 import { collection, onSnapshot, query, orderBy, updateDoc, doc, where, getDocs, limit, deleteDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useTranslation } from 'react-i18next';
 import "./AdminViewer.css";
 import "./FormStyles_Green.css";
@@ -72,10 +72,8 @@ function StaffSignaturePad({ registrationId, onSave, onCancel }) {
       <canvas
         ref={canvasRef}
         width={400}
-        height={150}
+        height={100}
         style={{
-          border: '2px solid #333',
-          backgroundColor: '#fff',
           cursor: 'crosshair',
           display: 'block',
           margin: '0 auto'
@@ -307,14 +305,6 @@ function AdminViewer() {
       setLoginError("");
     } catch (error) {
       setLoginError(error.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
     }
   };
 
@@ -1171,7 +1161,7 @@ function AdminViewer() {
       
       {/* Top bar: Controls in horizontal layout */}
       <div style={{ marginBottom: "2rem" }}>
-        {/* Top row with view modes and logout button */}
+  {/* Top row with view mode toggles */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           {/* View mode toggles */}
           <div style={{ display: "flex", gap: "1rem" }}>
@@ -1204,13 +1194,7 @@ function AdminViewer() {
             </label>
           </div>
           
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="logout-button nav-logout"
-          >
-            Logout
-          </button>
+          {/* Duplicate logout button removed; header already provides logout */}
         </div>
         
         {/* Controls section */}
@@ -1430,14 +1414,21 @@ function AdminViewer() {
                     borderCollapse: "collapse",
                     backgroundColor: "white"
                   }}>
-                    <thead style={{
-                      backgroundColor: "#2196F3",
-                      color: "white",
-                      position: "sticky",
-                      top: 0
-                    }}>
+                    <thead
+                      style={{
+                        backgroundColor: "#2196F3",
+                        color: "white",
+                        position: "sticky",
+                        top: 0
+                      }}
+                    >
                       <tr>
-                        <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Name</th>
+                        <th
+                          className="name-column"
+                          style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}
+                        >
+                          Name
+                        </th>
                         <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>ID</th>
                         <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Phone</th>
                         <th style={{ padding: "12px", textAlign: "left", borderRight: "1px solid #1976d2" }}>Address</th>
@@ -1451,22 +1442,42 @@ function AdminViewer() {
                           backgroundColor: index % 2 === 0 ? "#f9f9f9" : "white",
                           borderBottom: "1px solid #eee"
                         }}>
-                          <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
-                            <strong>{reg.formData?.firstName} {reg.formData?.lastName}</strong>
+                          <td
+                            className="name-cell"
+                            style={{ padding: "12px", borderRight: "1px solid #eee" }}
+                            data-label="Name"
+                          >
+                            <span className="name-primary">
+                              {([reg.formData?.firstName, reg.formData?.lastName]
+                                .filter(Boolean)
+                                .join(' ') || 'Unknown')}
+                            </span>
                           </td>
-                          <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
+                          <td
+                            style={{ padding: "12px", borderRight: "1px solid #eee" }}
+                            data-label="ID"
+                          >
                             {reg.formData?.id || reg.id}
                           </td>
-                          <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
+                          <td
+                            style={{ padding: "12px", borderRight: "1px solid #eee" }}
+                            data-label="Phone"
+                          >
                             {reg.formData?.phone}
                           </td>
-                          <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
+                          <td
+                            style={{ padding: "12px", borderRight: "1px solid #eee" }}
+                            data-label="Address"
+                          >
                             {reg.formData?.address}, {reg.formData?.city}
                           </td>
-                          <td style={{ padding: "12px", borderRight: "1px solid #eee" }}>
+                          <td
+                            style={{ padding: "12px", borderRight: "1px solid #eee" }}
+                            data-label="Date of Birth"
+                          >
                             {reg.formData?.dateOfBirth}
                           </td>
-                          <td style={{ padding: "12px" }}>
+                          <td style={{ padding: "12px" }} data-label="Actions">
                             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                               <button
                                 onClick={() => {
@@ -1626,16 +1637,16 @@ function AdminViewer() {
           {showArchived && resultsCount > 0 && (
             <div style={{ overflowX: 'auto' }}>
               <table className="admin-table">
-                <thead>
+                <thead style={{ backgroundColor: '#1976d2' }}>
                   <tr>
-                    <th>Served</th>
-                    <th>Name</th>
-                    <th>ID</th>
-                    <th>Source</th>
-                    <th>Location</th>
-                    <th>Contact & Address</th>
-                    <th>Picking up for</th>
-                    <th>Actions</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Served</th>
+                    <th className="name-column" style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Name</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>ID</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Source</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Location</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Contact & Address</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Picking up for</th>
+                    <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1647,9 +1658,9 @@ function AdminViewer() {
 
                     return (
                       <tr key={entry.key}>
-                        <td>{servedDisplay}</td>
-                        <td>
-                          <div style={{ fontWeight: 'bold' }}>{entry.name || 'Unknown'}</div>
+                        <td data-label="Served">{servedDisplay}</td>
+                        <td className="name-cell" data-label="Name">
+                          <div className="name-primary">{entry.name || 'Unknown'}</div>
                           {entry.status && (
                             <div
                               style={{
@@ -1667,21 +1678,32 @@ function AdminViewer() {
                             </div>
                           )}
                         </td>
-                        <td>{entry.idNumber || '—'}</td>
-                        <td>{entry.source}</td>
-                        <td>{entry.location || '—'}</td>
-                        <td>
+                        <td data-label="ID">{entry.idNumber || '—'}</td>
+                        <td data-label="Source">{entry.source}</td>
+                        <td data-label="Location">{entry.location || '—'}</td>
+                        <td data-label="Contact & Address">
                           {entry.contact.phone && <div>📞 {entry.contact.phone}</div>}
                           {entry.contact.email && <div>✉️ {entry.contact.email}</div>}
                           {addressParts && <div>📍 {addressParts}</div>}
                         </td>
-                        <td>{formatHouseholdDisplay(entry.household) || '—'}</td>
-                        <td>
-                          {entry.type === 'registration' ? (
+                        <td data-label="Picking up for">{formatHouseholdDisplay(entry.household) || '—'}</td>
+                        <td data-label="Actions">
+                          {entry.type === 'registration' && (
                             <button onClick={() => viewRegistrationForm(entry.rawRegistration)}>View Form</button>
-                          ) : (
-                            <span style={{ color: '#777' }}>—</span>
                           )}
+                          {entry.type === 'checkin' && (() => {
+                            // Try to find a linked registration
+                            const linkedReg = registrations.find(reg =>
+                              reg.formData?.id === entry.idNumber ||
+                              reg.id === entry.idNumber ||
+                              reg.id === entry.userId
+                            );
+                            return linkedReg ? (
+                              <button onClick={() => viewRegistrationForm(linkedReg)}>View Form</button>
+                            ) : (
+                              <span style={{ color: '#777' }}>No Form</span>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
@@ -1700,6 +1722,7 @@ function AdminViewer() {
             <thead>
               <tr>
                 <th 
+                  className="name-column"
                   onClick={() => {
                     if (sortField === 'name') {
                       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -1778,21 +1801,25 @@ function AdminViewer() {
             <tbody>
               {filteredRegistrations.map(reg => (
                 <tr key={reg.id}>
-                  <td>
-                    {reg.formData?.firstName} {reg.formData?.lastName}
+                  <td className="name-cell" data-label="Name">
+                    <span className="name-primary">
+                      {([reg.formData?.firstName, reg.formData?.lastName]
+                        .filter(Boolean)
+                        .join(' ') || 'Unknown')}
+                    </span>
                   </td>
-                  <td>
+                  <td data-label="ID">
                     <input
                       value={editedIds[reg.id] !== undefined ? editedIds[reg.id] : reg.formData?.id || ""}
                       onChange={e => handleIdChange(reg.id, e.target.value)}
                       style={{ width: "100px" }}
                     />
                   </td>
-                  <td>{reg.formData?.dateOfBirth}</td>
-                  <td>{reg.formData?.phone}</td>
-                  <td>{reg.formData?.address}</td>
-                  <td>{reg.formData?.apartment || ''}</td>
-                  <td>
+                  <td data-label="Date of Birth">{reg.formData?.dateOfBirth}</td>
+                  <td data-label="Phone">{reg.formData?.phone}</td>
+                  <td data-label="Address">{reg.formData?.address}</td>
+                  <td data-label="APT #">{reg.formData?.apartment || ''}</td>
+                  <td data-label="Picking up for">
                     <div style={{ position: 'relative' }}>
                       {!householdEditorOpen[reg.id] ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -1987,7 +2014,7 @@ function AdminViewer() {
                     </div>
                   </td>
                   
-                  <td>
+                  <td data-label="Serve">
                     <button
                       onClick={() => (showArchived ? unarchiveRegistration(reg.id) : archiveRegistration(reg.id))}
                       style={{
@@ -1998,7 +2025,7 @@ function AdminViewer() {
                       Serve
                     </button>
                   </td>
-                  <td>
+                  <td data-label="Actions">
                     <div className="action-buttons">
                       <button onClick={() => viewRegistrationForm(reg)}>View Form</button>
                       <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
@@ -2082,8 +2109,8 @@ function AdminViewer() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th className="name-column">Name</th>
                   <th>ID</th>
-                  <th>Name</th>
                   <th>Check-In Time</th>
                   <th>Picking up for</th>
                   <th>Serve</th>
@@ -2093,16 +2120,18 @@ function AdminViewer() {
               <tbody>
                 {sortedQueue.map((item, idx) => (
                   <tr key={item.id}>
-                    <td>{item.formData?.id || item.id}</td>
-                    <td>{item.formData?.firstName && item.formData?.lastName 
-                        ? `${item.formData.firstName} ${item.formData.lastName}` 
-                        : item.name}</td>
-                    <td>
+                    <td className="name-cell" data-label="Name">
+                      <span className="name-primary">
+                        {getCheckinNameParts(item).fullName || 'Unknown'}
+                      </span>
+                    </td>
+                    <td data-label="ID">{item.formData?.id || item.id}</td>
+                    <td data-label="Check-In Time">
                       {item.checkInTime?.seconds
                         ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()
                         : ""}
                     </td>
-                    <td>
+                    <td data-label="Picking up for">
                       <div style={{ fontSize: '12px', maxWidth: '150px' }}>
                         {(() => {
                           try {
@@ -2127,7 +2156,7 @@ function AdminViewer() {
                         })()}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Serve">
                       <button
                         onClick={() => removeCheckin(item.id)}
                         style={{
@@ -2139,7 +2168,7 @@ function AdminViewer() {
                         Serve
                       </button>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                       <div className="action-buttons">
                         <button 
                           onClick={() => deleteCheckin(item.id, item.name)}
@@ -2165,8 +2194,8 @@ function AdminViewer() {
           <table className="admin-table">
             <thead>
               <tr>
+                <th className="name-column">Name</th>
                 <th>ID</th>
-                <th>Name</th>
                 <th>Check-In Time</th>
                 <th>Picking up for</th>
               </tr>
@@ -2174,16 +2203,18 @@ function AdminViewer() {
             <tbody>
               {archivedQueueFiltered.map((item, idx) => (
                 <tr key={item.id}>
-                  <td>{item.formData?.id || item.id}</td>
-                  <td>{item.formData?.firstName && item.formData?.lastName 
-                      ? `${item.formData.firstName} ${item.formData.lastName}` 
-                      : item.name}</td>
-                  <td>
+                  <td className="name-cell" data-label="Name">
+                    <span className="name-primary">
+                      {getCheckinNameParts(item).fullName || 'Unknown'}
+                    </span>
+                  </td>
+                  <td data-label="ID">{item.formData?.id || item.id}</td>
+                  <td data-label="Check-In Time">
                     {item.checkInTime?.seconds
                       ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()
                       : ""}
                   </td>
-                  <td>
+                  <td data-label="Picking up for">
                     <div style={{ fontSize: '12px', maxWidth: '150px' }}>
                       {(() => {
                         try {
