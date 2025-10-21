@@ -4,7 +4,7 @@ import RegistrationForm from './RegistrationForm';
 import CheckInForm from './CheckInForm';
 import './FormStyles_Green.css';
 import './i18n';
-import AdminViewer from './AdminViewer';
+import AdminDashboard from './AdminDashboard';
 import ErrorBoundary from "./ErrorBoundary";
 import Home from './Home';
 
@@ -48,7 +48,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/register" element={<RegistrationForm />} />
               <Route path="/checkin" element={<CheckInForm />} />
-              <Route path="/admin" element={<AdminViewer />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </main>
         </div>
