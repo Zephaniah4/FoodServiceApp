@@ -10,15 +10,28 @@ root.render(
   </React.StrictMode>
 );
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then((registration) => {
-        console.log("Service Worker registered with scope:", registration.scope);
+// Ensure any previously registered service workers are removed so clients always
+// load the latest JavaScript bundle (prevents the blank-screen "Unexpected token '<'" issue).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
       })
       .catch((error) => {
-        console.error("Service Worker registration failed:", error);
+        console.warn('Service worker lookup failed:', error);
       });
+
+    if (window.caches?.keys) {
+      caches.keys()
+        .then((cacheNames) => {
+          cacheNames
+            .filter((name) => name.startsWith('food-service-cache'))
+            .forEach((cacheName) => caches.delete(cacheName));
+        })
+        .catch((error) => {
+          console.warn('Cache cleanup failed:', error);
+        });
+    }
   });
 }
