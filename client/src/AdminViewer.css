@@ -33,13 +33,6 @@
   background-color: #fff;
 }
 
-.admin-table th {
-  background-color: #2c3e50;
-  color: #ffffff;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
 .admin-table th.name-column {
   font-size: 16px;
   font-weight: 700;

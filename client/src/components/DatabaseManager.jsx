@@ -1360,8 +1360,8 @@ function DatabaseManager() {
                   gap: '10px',
                   margin: '20px 0',
                   padding: '10px',
-                  backgroundColor: '#f0f0f0',
-                  border: '2px solid red'
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #ddd'
                 }}>
                   <button
                     onClick={goToPrevPage}
@@ -1379,8 +1379,6 @@ function DatabaseManager() {
                   </button>
                   
                   <span style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                    DEBUG: displayData.length={displayData.length}, registrations.length={registrations.length}, totalPages={totalPages}
-                    <br />
                     {loading ? 'Loading...' : 
                      totalPages > 0 ? `Page ${currentPage} of ${totalPages}` : `Page ${currentPage}`}
                   </span>
