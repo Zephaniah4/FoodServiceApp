@@ -137,6 +137,9 @@ export default function RegistrationForm() {
 
   const dobLabelId = 'registration-dob-label';
   const dobInputId = 'registration-dob-input';
+  const signatureDimensions = isMobilePicker
+    ? { width: 340, height: 180 }
+    : { width: 500, height: 200 };
   const [form, setForm] = useState({
     firstName: '', lastName: '', dateOfBirth: '', phone: '', address: '',
     apartment: '', city: '', state: '', zipCode: '', race: '', ethnicity: '', sex: '', maritalStatus: '',
@@ -1226,12 +1229,22 @@ export default function RegistrationForm() {
 
         <div className="form-section">
           <h3>{t('signature')}</h3>
-          <SignatureCanvas
-            ref={sigRef}
-            penColor="black"
-            canvasProps={{ width: 500, height: 200, className: 'sigCanvas' }}
-            clearOnResize={false}
-          />
+          <div className="signature-pad">
+            <SignatureCanvas
+              ref={sigRef}
+              penColor="black"
+              canvasProps={{
+                width: signatureDimensions.width,
+                height: signatureDimensions.height,
+                className: 'sigCanvas',
+                style: {
+                  width: '100%',
+                  height: `${signatureDimensions.height}px`
+                }
+              }}
+              clearOnResize={false}
+            />
+          </div>
         </div>
 
         <div style={{ 
