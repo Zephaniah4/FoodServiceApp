@@ -33,6 +33,13 @@
   background-color: #fff;
 }
 
+.admin-table thead th {
+  background-color: #1f3556;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .admin-table th.name-column {
   font-size: 16px;
   font-weight: 700;
@@ -1010,6 +1017,34 @@ input[type="date"]:focus {
 
 /* Live Check-In Queue ID styling - second column is now ID */
 .admin-table tbody tr td:nth-child(2) {
+  font-weight: normal !important;
+  font-size: 14px !important;
+  color: #666 !important;
+}
+
+/* Selection checkbox column support */
+.admin-table th.selection-column,
+.admin-table td.selection-cell {
+  text-align: center;
+}
+
+.admin-table td.selection-cell {
+  font-weight: normal !important;
+  font-size: 14px !important;
+  color: #4a4a4a !important;
+}
+
+.admin-table td.selection-cell input[type="checkbox"] {
+  transform: scale(1.1);
+}
+
+.admin-table td.selection-cell + td {
+  font-weight: bold !important;
+  font-size: 17.5px !important;
+  color: #2c3e50 !important;
+}
+
+.admin-table td.selection-cell + td + td {
   font-weight: normal !important;
   font-size: 14px !important;
   color: #666 !important;

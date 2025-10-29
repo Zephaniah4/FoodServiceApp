@@ -30,6 +30,10 @@ function DatabaseManager() {
   const [editedTefap, setEditedTefap] = useState({});
   const [editedFormFields, setEditedFormFields] = useState({});
   const [editedLocations, setEditedLocations] = useState({});
+  const [selectedRegistrations, setSelectedRegistrations] = useState({});
+  const [batchTefapDate, setBatchTefapDate] = useState('');
+  const [batchLocation, setBatchLocation] = useState('');
+  const [isApplyingBatch, setIsApplyingBatch] = useState(false);
   
   // New state variables for sorting and search
   const [sortField, setSortField] = useState('submittedAt');
@@ -38,6 +42,13 @@ function DatabaseManager() {
   
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const selectedIds = useMemo(() => (
+    Object.entries(selectedRegistrations)
+      .filter(([, isSelected]) => isSelected)
+      .map(([id]) => id)
+  ), [selectedRegistrations]);
+  const selectedCount = selectedIds.length;
+  const isBatchApplyDisabled = isApplyingBatch || selectedCount === 0 || (!batchTefapDate && !batchLocation);
 
   // Database pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -233,6 +244,13 @@ function DatabaseManager() {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedData = displayData.slice(startIndex, endIndex);
+  const isAllCurrentPageSelected = paginatedData.length > 0 && paginatedData.every(reg => selectedRegistrations[reg.id]);
+
+  useEffect(() => {
+    if (!selectAllCheckboxRef.current) return;
+    const someSelected = paginatedData.some(reg => selectedRegistrations[reg.id]);
+    selectAllCheckboxRef.current.indeterminate = someSelected && !isAllCurrentPageSelected;
+  }, [paginatedData, selectedRegistrations, isAllCurrentPageSelected]);
 
   // Client-side pagination functions
   const goToNextPage = () => {
@@ -254,6 +272,7 @@ function DatabaseManager() {
   }, [fetchAllRegistrations]);
 
   const previousShowArchived = useRef(showArchived);
+  const selectAllCheckboxRef = useRef(null);
   useEffect(() => {
     if (previousShowArchived.current && !showArchived) {
       fetchAllRegistrations();
@@ -319,6 +338,128 @@ function DatabaseManager() {
   }, [showArchived]); // Re-run when archive filter changes
 
 
+  const toggleSelectRegistration = (regId) => {
+    setSelectedRegistrations(prev => {
+      const updated = { ...prev };
+      if (updated[regId]) {
+        delete updated[regId];
+      } else {
+        updated[regId] = true;
+      }
+      return updated;
+    });
+  };
+
+  const handleSelectAllCurrentPage = (checked) => {
+    setSelectedRegistrations(prev => {
+      const updated = { ...prev };
+      paginatedData.forEach(reg => {
+        if (checked) {
+          updated[reg.id] = true;
+        } else {
+          delete updated[reg.id];
+        }
+      });
+      return updated;
+    });
+  };
+
+  const clearBatchSelection = () => {
+    setSelectedRegistrations({});
+  };
+
+  const handleBatchFieldReset = () => {
+    setBatchTefapDate('');
+    setBatchLocation('');
+  };
+
+  // Applies TEFAP date and/or site updates to selected registrations.
+  const applyBatchUpdates = async () => {
+    if (selectedIds.length === 0) {
+      setSaveMessage("Select at least one registration to apply batch updates.");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+
+    if (!batchTefapDate && !batchLocation) {
+      setSaveMessage("Set a TEFAP date or choose a site before applying.");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+
+    setIsApplyingBatch(true);
+
+    try {
+      for (const regId of selectedIds) {
+        const registration = registrations.find(reg => reg.id === regId);
+        if (!registration) continue;
+
+        const updateData = {};
+        if (batchTefapDate) {
+          updateData["formData.tefapDate"] = batchTefapDate;
+        }
+
+        if (batchLocation) {
+          updateData["formData.location"] = batchLocation;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await updateDoc(doc(db, "registrations", regId), updateData);
+        }
+
+        if (batchLocation) {
+          const userId = registration.formData?.id || registration.id;
+          try {
+            const checkinsSnapshot = await getDocs(query(
+              collection(db, "checkins"),
+              where("userId", "==", userId)
+            ));
+
+            const checkinUpdates = checkinsSnapshot.docs.map(d =>
+              updateDoc(doc(db, "checkins", d.id), {
+                location: batchLocation,
+                "formData.location": batchLocation
+              })
+            );
+
+            if (checkinUpdates.length) {
+              await Promise.all(checkinUpdates);
+            }
+          } catch (error) {
+            console.error("Error updating check-ins during batch location update:", error);
+          }
+        }
+      }
+
+      if (batchTefapDate) {
+        setEditedTefap(prev => {
+          const updated = { ...prev };
+          selectedIds.forEach(id => delete updated[id]);
+          return updated;
+        });
+      }
+
+      if (batchLocation) {
+        setEditedLocations(prev => {
+          const updated = { ...prev };
+          selectedIds.forEach(id => delete updated[id]);
+          return updated;
+        });
+      }
+
+  handleBatchFieldReset();
+      setSelectedRegistrations({});
+      await fetchAllRegistrations();
+      setSaveMessage(`Batch update applied to ${selectedIds.length} registration${selectedIds.length !== 1 ? 's' : ''}!`);
+    } catch (error) {
+      console.error("Error applying batch updates:", error);
+      setSaveMessage("Error applying batch updates. Please try again.");
+    } finally {
+      setIsApplyingBatch(false);
+      setTimeout(() => setSaveMessage(""), 3000);
+    }
+  };
+
   const handleIdChange = (docId, newId) => {
     setEditedIds(prev => ({ ...prev, [docId]: newId }));
   };
@@ -366,6 +507,18 @@ function DatabaseManager() {
       await Promise.all(updates);
 
       setSaveMessage("Location saved successfully!");
+      setEditedLocations(prev => {
+        const updated = { ...prev };
+        delete updated[regDocId];
+        return updated;
+      });
+      setSelectedRegistrations(prev => {
+        if (!prev[regDocId]) return prev;
+        const updated = { ...prev };
+        delete updated[regDocId];
+        return updated;
+      });
+      await fetchAllRegistrations();
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
       console.error("Error saving location:", error);
@@ -631,6 +784,12 @@ function DatabaseManager() {
     }
     
     setSaveMessage("ID saved successfully!");
+    setEditedIds(prev => {
+      const updated = { ...prev };
+      delete updated[docId];
+      return updated;
+    });
+    await fetchAllRegistrations();
     setTimeout(() => setSaveMessage(""), 3000);
   };
 
@@ -680,6 +839,12 @@ function DatabaseManager() {
     await Promise.all(updates);
 
     setSaveMessage("Picking up for saved successfully!");
+    setEditedHouseholds(prev => {
+      const updated = { ...prev };
+      delete updated[regDocId];
+      return updated;
+    });
+    await fetchAllRegistrations();
     setTimeout(() => setSaveMessage(""), 3000);
   };
 
@@ -692,6 +857,12 @@ function DatabaseManager() {
     });
 
     setSaveMessage("TEFAP data saved successfully!");
+    setEditedTefap(prev => {
+      const updated = { ...prev };
+      delete updated[regDocId];
+      return updated;
+    });
+    await fetchAllRegistrations();
     setTimeout(() => setSaveMessage(""), 3000);
   };
   const deleteRegistration = async (regId, regName) => {
@@ -1656,9 +1827,114 @@ function DatabaseManager() {
               </span>
             </div>
             
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '12px',
+                margin: '12px 0 16px',
+                padding: '12px 16px',
+                backgroundColor: '#f8f9ff',
+                border: '1px solid #cfd8dc',
+                borderRadius: '6px'
+              }}
+            >
+              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#0d47a1' }}>
+                Batch edit (selected: {selectedCount})
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '500' }}>TEFAP date:</label>
+                <input
+                  type="date"
+                  value={batchTefapDate}
+                  onChange={(e) => setBatchTefapDate(e.target.value)}
+                  style={{
+                    fontSize: '12px',
+                    padding: '4px 6px',
+                    border: '1px solid #b0bec5',
+                    borderRadius: '4px'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '500' }}>Site:</label>
+                <select
+                  value={batchLocation}
+                  onChange={(e) => setBatchLocation(e.target.value)}
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #b0bec5',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    minWidth: '90px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="">Select</option>
+                  <option value="Plano">Plano</option>
+                  <option value="Dallas">Dallas</option>
+                  <option value="Both">Both</option>
+                </select>
+              </div>
+              <button
+                onClick={applyBatchUpdates}
+                disabled={isBatchApplyDisabled}
+                style={{
+                  padding: '6px 14px',
+                  backgroundColor: isBatchApplyDisabled ? '#b0bec5' : '#1976d2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isBatchApplyDisabled ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                {isApplyingBatch ? 'Applying...' : 'Apply to selected'}
+              </button>
+              <button
+                onClick={handleBatchFieldReset}
+                style={{
+                  padding: '6px 10px',
+                  backgroundColor: '#eceff1',
+                  color: '#37474f',
+                  border: '1px solid #cfd8dc',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Reset fields
+              </button>
+              <button
+                onClick={clearBatchSelection}
+                disabled={selectedCount === 0}
+                style={{
+                  padding: '6px 10px',
+                  backgroundColor: selectedCount === 0 ? '#eceff1' : '#fbe9e7',
+                  color: selectedCount === 0 ? '#90a4ae' : '#d84315',
+                  border: '1px solid #ffccbc',
+                  borderRadius: '4px',
+                  cursor: selectedCount === 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Clear selection
+              </button>
+            </div>
+            
             <table className="admin-table">
             <thead>
               <tr>
+                <th className="selection-column" style={{ width: '45px', textAlign: 'center' }}>
+                  <input
+                    ref={selectAllCheckboxRef}
+                    type="checkbox"
+                    checked={isAllCurrentPageSelected}
+                    onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
+                  />
+                </th>
                 <th 
                   onClick={() => {
                     if (sortField === 'name') {
@@ -1738,9 +2014,21 @@ function DatabaseManager() {
             </thead>
             <tbody>
               {paginatedData.map(reg => (
-                <tr key={reg.id}>
-                  <td data-label="Name">
-                    {reg.formData?.firstName} {reg.formData?.lastName}
+                <tr 
+                  key={reg.id}
+                  style={selectedRegistrations[reg.id] ? { backgroundColor: '#f1f8ff' } : undefined}
+                >
+                  <td className="selection-cell" data-label="Select" style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!selectedRegistrations[reg.id]}
+                      onChange={() => toggleSelectRegistration(reg.id)}
+                    />
+                  </td>
+                  <td className="name-cell" data-label="Name">
+                    <span className="name-primary">
+                      {reg.formData?.firstName} {reg.formData?.lastName}
+                    </span>
                   </td>
                   <td data-label="ID">
                     <input

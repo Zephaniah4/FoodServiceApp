@@ -6,14 +6,131 @@ import './FormStyles_Green.css';
 import logo from './ntfb_header_logo_retina.png';
 import { db } from './firebase';
 import { collection, addDoc, updateDoc, Timestamp, query, where, getDocs, doc } from 'firebase/firestore';
-import { DatePicker } from '@mui/x-date-pickers';
+import { DatePicker, MobileDatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import dayjs from 'dayjs';
 
 export default function RegistrationForm() {
   const { t } = useTranslation();
   const sigRef = useRef();
+  const isMobilePicker = useMediaQuery('(max-width:600px)');
+  const desktopTextFieldProps = {
+    size: 'small',
+    required: true,
+    sx: {
+      '& .MuiInputBase-root': {
+        height: '40px !important',
+        minHeight: '40px !important',
+      },
+      '& .MuiInputBase-input': {
+        padding: '8px 12px !important',
+        height: '24px !important',
+        lineHeight: '24px !important',
+      },
+    }
+  };
+
+  const desktopPickerSx = {
+    width: '100%',
+    marginTop: '0.2rem !important',
+    alignSelf: 'flex-end',
+    '& .MuiInputBase-root': {
+      width: '100%',
+      height: '40px !important',
+      minHeight: '40px !important',
+      maxHeight: '40px !important',
+      display: 'flex',
+      alignItems: 'center',
+    },
+    '& .MuiInputBase-input': {
+      padding: '8px 12px !important',
+      fontSize: '1rem',
+      color: '#333',
+      height: '24px !important',
+      lineHeight: '24px !important',
+      border: '1px solid #bdbdbd',
+      borderRadius: '5px',
+      boxSizing: 'border-box',
+    },
+    '& .MuiInputBase-input:focus': {
+      borderColor: '#388e3c',
+      outline: 'none',
+      boxShadow: '0 0 0 2px rgba(56, 142, 60, 0.2)',
+    },
+    '& .MuiIconButton-root': {
+      padding: '8px',
+      color: '#757575',
+    },
+    '& .MuiOutlinedInput-root': {
+      '& fieldset': {
+        border: 'none',
+      },
+    },
+  };
+
+  const mobileTextFieldProps = {
+    size: 'medium',
+    required: true,
+    fullWidth: true,
+    sx: {
+      '& .MuiInputBase-root': {
+        height: '52px !important',
+        minHeight: '52px !important',
+        border: '1px solid #bdbdbd',
+        borderRadius: '8px',
+      },
+      '& .MuiInputBase-input': {
+        padding: '14px 16px !important',
+        fontSize: '1.1rem',
+      },
+      '& .MuiOutlinedInput-root': {
+        '& fieldset': {
+          borderColor: '#bdbdbd',
+        },
+        '&:hover fieldset': {
+          borderColor: '#388e3c',
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: '#388e3c',
+          boxShadow: '0 0 0 2px rgba(56, 142, 60, 0.2)',
+        }
+      }
+    }
+  };
+  const mobilePaperSx = {
+    '& .MuiPickersToolbar-root': {
+      paddingTop: '12px',
+      paddingBottom: '8px'
+    },
+    '& .MuiPickersToolbar-title': {
+      fontSize: '1.25rem'
+    },
+    '& .MuiPickersCalendarHeader-root': {
+      paddingLeft: '16px',
+      paddingRight: '16px'
+    },
+    '& .MuiPickersCalendarHeader-label': {
+      fontSize: '1.1rem',
+      fontWeight: 600
+    },
+    '& .MuiPickersArrowSwitcher-root': {
+      '& .MuiIconButton-root': {
+        padding: '10px'
+      }
+    },
+    '& .MuiPickersYear-yearButton': {
+      fontSize: '1.1rem',
+      padding: '12px 0'
+    },
+    '& .MuiPickersDay-root': {
+      width: 48,
+      height: 48,
+      fontSize: '1.1rem',
+      margin: '0 4px'
+    }
+  };
   const [form, setForm] = useState({
     firstName: '', lastName: '', dateOfBirth: '', phone: '', address: '',
     apartment: '', city: '', state: '', zipCode: '', race: '', ethnicity: '', sex: '', maritalStatus: '',
@@ -846,72 +963,55 @@ export default function RegistrationForm() {
               <input name="lastName" value={form.lastName} onChange={handleChange} />
             </label>
             <label>{t('dob')}
-              <DatePicker
-                value={form.dateOfBirth ? dayjs(form.dateOfBirth, "MM-DD-YYYY") : null}
-                onChange={(date) => {
-                  if (date) {
-                    handleChange({ target: { name: 'dateOfBirth', value: date.format("MM-DD-YYYY") } });
-                  } else {
-                    handleChange({ target: { name: 'dateOfBirth', value: null } });
-                  }
-                }}
-                minDate={dayjs().year(minYear)}
-                maxDate={dayjs().year(currentYear)}
-                format="MM-DD-YYYY"
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: {
-                      '& .MuiInputBase-root': {
-                        height: '40px !important',
-                        minHeight: '40px !important',
-                      },
-                      '& .MuiInputBase-input': {
-                        padding: '8px 12px !important',
-                        height: '24px !important',
-                        lineHeight: '24px !important',
-                      },
+              {(isMobilePicker ? (
+                <MobileDatePicker
+                  value={form.dateOfBirth ? dayjs(form.dateOfBirth, "MM-DD-YYYY") : null}
+                  onChange={(date) => {
+                    if (date) {
+                      handleChange({ target: { name: 'dateOfBirth', value: date.format("MM-DD-YYYY") } });
+                    } else {
+                      handleChange({ target: { name: 'dateOfBirth', value: null } });
                     }
-                  }
-                }}
-                sx={{
-                  width: '100%',
-                  marginTop: '0.2rem !important',
-                  alignSelf: 'flex-end',
-                  '& .MuiInputBase-root': {
-                    width: '100%',
-                    height: '40px !important',
-                    minHeight: '40px !important',
-                    maxHeight: '40px !important',
-                    display: 'flex',
-                    alignItems: 'center',
-                  },
-                  '& .MuiInputBase-input': {
-                    padding: '8px 12px !important',
-                    fontSize: '1rem',
-                    color: '#333',
-                    height: '24px !important',
-                    lineHeight: '24px !important',
-                    border: '1px solid #bdbdbd',
-                    borderRadius: '5px',
-                    boxSizing: 'border-box',
-                  },
-                  '& .MuiInputBase-input:focus': {
-                    borderColor: '#388e3c',
-                    outline: 'none',
-                    boxShadow: '0 0 0 2px rgba(56, 142, 60, 0.2)',
-                  },
-                  '& .MuiIconButton-root': {
-                    padding: '8px',
-                    color: '#757575',
-                  },
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      border: 'none',
+                  }}
+                  minDate={dayjs().year(minYear)}
+                  maxDate={dayjs().year(currentYear)}
+                  format="MM-DD-YYYY"
+                  openTo="year"
+                  views={['year', 'month', 'day']}
+                  slotProps={{
+                    textField: mobileTextFieldProps,
+                    actionBar: { actions: ['cancel', 'accept'] },
+                    toolbar: {
+                      hidden: false,
+                      toolbarFormat: 'MM/DD/YYYY',
+                      toolbarPlaceholder: t('dob')
                     },
-                  },
-                }}
-              />
+                    mobilePaper: {
+                      sx: mobilePaperSx
+                    }
+                  }}
+                />
+              ) : (
+                <DatePicker
+                  value={form.dateOfBirth ? dayjs(form.dateOfBirth, "MM-DD-YYYY") : null}
+                  onChange={(date) => {
+                    if (date) {
+                      handleChange({ target: { name: 'dateOfBirth', value: date.format("MM-DD-YYYY") } });
+                    } else {
+                      handleChange({ target: { name: 'dateOfBirth', value: null } });
+                    }
+                  }}
+                  minDate={dayjs().year(minYear)}
+                  maxDate={dayjs().year(currentYear)}
+                  format="MM-DD-YYYY"
+                  openTo="year"
+                  views={['year', 'month', 'day']}
+                  slotProps={{
+                    textField: desktopTextFieldProps
+                  }}
+                  sx={desktopPickerSx}
+                />
+              ))}
             </label>
             <label>{t('phone')}
               <input 
