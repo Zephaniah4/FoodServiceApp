@@ -100,6 +100,9 @@ export default function RegistrationForm() {
     }
   };
   const mobilePaperSx = {
+    height: '100%',
+    maxHeight: '100%',
+    margin: 0,
     '& .MuiPickersToolbar-root': {
       paddingTop: '12px',
       paddingBottom: '8px'
@@ -966,7 +969,7 @@ export default function RegistrationForm() {
               <input name="lastName" value={form.lastName} onChange={handleChange} />
             </label>
             <div className="form-field">
-              <label id={dobLabelId} htmlFor={dobInputId}>{t('dob')}</label>
+              <span id={dobLabelId} className="form-field-label">{t('dob')}</span>
               {(isMobilePicker ? (
                 <MobileDatePicker
                   value={form.dateOfBirth ? dayjs(form.dateOfBirth, "MM-DD-YYYY") : null}
@@ -997,6 +1000,10 @@ export default function RegistrationForm() {
                       hidden: false,
                       toolbarFormat: 'MM/DD/YYYY',
                       toolbarPlaceholder: t('dob')
+                    },
+                    dialog: {
+                      fullScreen: true,
+                      disableRestoreFocus: true
                     },
                     mobilePaper: {
                       sx: mobilePaperSx

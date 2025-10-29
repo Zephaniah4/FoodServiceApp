@@ -159,6 +159,11 @@ h3 {
   margin-bottom: 1rem !important;
 }
 
+.form-grid .form-field .form-field-label {
+  font-weight: 500;
+  color: #374151;
+}
+
 .form-grid input, 
 .form-grid select,
 .form-grid textarea {
