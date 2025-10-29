@@ -273,6 +273,18 @@ h3 {
   margin-top: 3px;
 }
 
+.info-box {
+  background: #f7fbf7;
+  border-left: 4px solid #6aa84f;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 20px rgba(106, 168, 79, 0.08);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .sigCanvas {
   border: 2px dashed #aaa;
   background: #fdfdfd;
