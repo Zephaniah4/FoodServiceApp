@@ -152,6 +152,13 @@ h3 {
   gap: 0.3rem !important;
 }
 
+.form-grid .form-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.3rem !important;
+  margin-bottom: 1rem !important;
+}
+
 .form-grid input, 
 .form-grid select,
 .form-grid textarea {

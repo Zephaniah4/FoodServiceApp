@@ -131,6 +131,9 @@ export default function RegistrationForm() {
       margin: '0 4px'
     }
   };
+
+  const dobLabelId = 'registration-dob-label';
+  const dobInputId = 'registration-dob-input';
   const [form, setForm] = useState({
     firstName: '', lastName: '', dateOfBirth: '', phone: '', address: '',
     apartment: '', city: '', state: '', zipCode: '', race: '', ethnicity: '', sex: '', maritalStatus: '',
@@ -962,7 +965,8 @@ export default function RegistrationForm() {
             <label>{t('lastName')}
               <input name="lastName" value={form.lastName} onChange={handleChange} />
             </label>
-            <label>{t('dob')}
+            <div className="form-field">
+              <label id={dobLabelId} htmlFor={dobInputId}>{t('dob')}</label>
               {(isMobilePicker ? (
                 <MobileDatePicker
                   value={form.dateOfBirth ? dayjs(form.dateOfBirth, "MM-DD-YYYY") : null}
@@ -979,7 +983,15 @@ export default function RegistrationForm() {
                   openTo="year"
                   views={['year', 'month', 'day']}
                   slotProps={{
-                    textField: mobileTextFieldProps,
+                    textField: {
+                      ...mobileTextFieldProps,
+                      id: dobInputId,
+                      name: 'dateOfBirth',
+                      inputProps: {
+                        ...(mobileTextFieldProps.inputProps || {}),
+                        'aria-labelledby': dobLabelId
+                      }
+                    },
                     actionBar: { actions: ['cancel', 'accept'] },
                     toolbar: {
                       hidden: false,
@@ -1007,12 +1019,20 @@ export default function RegistrationForm() {
                   openTo="year"
                   views={['year', 'month', 'day']}
                   slotProps={{
-                    textField: desktopTextFieldProps
+                    textField: {
+                      ...desktopTextFieldProps,
+                      id: dobInputId,
+                      name: 'dateOfBirth',
+                      inputProps: {
+                        ...(desktopTextFieldProps.inputProps || {}),
+                        'aria-labelledby': dobLabelId
+                      }
+                    }
                   }}
                   sx={desktopPickerSx}
                 />
               ))}
-            </label>
+            </div>
             <label>{t('phone')}
               <input 
                 name="phone" 
