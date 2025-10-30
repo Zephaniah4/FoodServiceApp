@@ -1358,9 +1358,10 @@ function DatabaseManager() {
                   fontSize: "18px",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem"
+                  gap: "0.5rem",
+                  flexWrap: "wrap"
                 }}>
-                  🔍 Search Results for "{searchTerm}"
+                  {`Search Results for "${searchTerm}"`}
                 </h3>
                 <div style={{
                   fontSize: "16px",
@@ -1529,6 +1530,7 @@ function DatabaseManager() {
                   justifyContent: 'center',
                   alignItems: 'center',
                   gap: '10px',
+                  flexWrap: 'wrap',
                   margin: '20px 0',
                   padding: '10px',
                   backgroundColor: '#f8f9fa',
@@ -1569,7 +1571,15 @@ function DatabaseManager() {
                     {loading ? 'Loading...' : 'Next'}
                   </button>
                   
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "20px" }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    marginLeft: 0,
+                    marginTop: '10px',
+                    flexWrap: 'wrap'
+                  }}>
                     <label style={{ fontWeight: "bold", fontSize: "14px" }}>Show:</label>
                     <select
                       value={pageSize}
@@ -1577,7 +1587,7 @@ function DatabaseManager() {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      style={{ padding: "6px 10px", fontSize: "14px" }}
+                      style={{ padding: "6px 10px", fontSize: "14px", minWidth: '90px' }}
                     >
                       <option value={20}>20</option>
                       <option value={40}>40</option>
@@ -1588,7 +1598,15 @@ function DatabaseManager() {
                     </select>
                   </div>
                   
-                  <span style={{ fontSize: '14px', color: '#666', marginLeft: '20px' }}>
+                  <span style={{
+                    fontSize: '14px',
+                    color: '#666',
+                    marginLeft: 0,
+                    marginTop: '10px',
+                    width: '100%',
+                    textAlign: 'center',
+                    wordBreak: 'break-word'
+                  }}>
                     Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} records (Page {currentPage} of {totalPages}) ({pageSize} per page)
                   </span>
                 </div>
@@ -1762,6 +1780,7 @@ function DatabaseManager() {
               justifyContent: 'center',
               alignItems: 'center',
               gap: '10px',
+              flexWrap: 'wrap',
               margin: '20px 0',
               padding: '10px',
               backgroundColor: '#f0f0f0',
@@ -1803,7 +1822,15 @@ function DatabaseManager() {
                 {loading ? 'Loading...' : 'Next'}
               </button>
               
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "20px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                marginLeft: 0,
+                marginTop: '10px',
+                flexWrap: 'wrap'
+              }}>
                 <label style={{ fontWeight: "bold", fontSize: "14px" }}>Show:</label>
                 <select
                   value={pageSize}
@@ -1811,7 +1838,7 @@ function DatabaseManager() {
                     setPageSize(Number(e.target.value));
                     setCurrentPage(1); // Reset to first page when changing page size
                   }}
-                  style={{ padding: "6px 10px", fontSize: "14px" }}
+                  style={{ padding: "6px 10px", fontSize: "14px", minWidth: '90px' }}
                 >
                   <option value={20}>20</option>
                   <option value={40}>40</option>
@@ -1822,7 +1849,15 @@ function DatabaseManager() {
                 </select>
               </div>
               
-              <span style={{ fontSize: '14px', color: '#666', marginLeft: '20px' }}>
+              <span style={{
+                fontSize: '14px',
+                color: '#666',
+                marginLeft: 0,
+                marginTop: '10px',
+                width: '100%',
+                textAlign: 'center',
+                wordBreak: 'break-word'
+              }}>
                 Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} records ({pageSize} per page)
               </span>
             </div>
@@ -2356,7 +2391,15 @@ function DatabaseManager() {
               {loading ? 'Loading...' : 'Next'}
             </button>
             
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "20px" }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              marginLeft: 0,
+              marginTop: '10px',
+              flexWrap: 'wrap'
+            }}>
               <label style={{ fontWeight: "bold", fontSize: "14px" }}>Show:</label>
               <select
                 value={pageSize}
@@ -2364,7 +2407,7 @@ function DatabaseManager() {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1); // Reset to first page when changing page size
                 }}
-                style={{ padding: "6px 10px", fontSize: "14px" }}
+                style={{ padding: "6px 10px", fontSize: "14px", minWidth: '90px' }}
               >
                 <option value={20}>20</option>
                 <option value={40}>40</option>
@@ -2375,7 +2418,15 @@ function DatabaseManager() {
               </select>
             </div>
             
-            <span style={{ fontSize: '14px', color: '#666', marginLeft: '20px' }}>
+            <span style={{
+              fontSize: '14px',
+              color: '#666',
+              marginLeft: 0,
+              marginTop: '10px',
+              width: '100%',
+              textAlign: 'center',
+              wordBreak: 'break-word'
+            }}>
               Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} records ({pageSize} per page)
             </span>
           </div>

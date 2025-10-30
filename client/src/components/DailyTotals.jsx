@@ -16,7 +16,9 @@ const DailyTotals = () => {
   const [registrationCount, setRegistrationCount] = useState(0);
   const [checkinCount, setCheckinCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);const fetchDailyCounts = useCallback(async () => {
+  const [error, setError] = useState(null);
+
+  const fetchDailyCounts = useCallback(async () => {
     if (!startDate || !endDate) return;
     
     setLoading(true);
@@ -71,74 +73,77 @@ const DailyTotals = () => {
     fetchDailyCounts();
   }, [fetchDailyCounts]);
 
-  return (    <div className="daily-totals-container">
+  const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
+  const handleApplyRange = () => setIsDropdownOpen(false);
+
+  return (
+    <div className="daily-totals-container">
       <div className="daily-totals-header">
         <h3 className="daily-totals-title">Daily Totals</h3>
-      </div>      <div className="date-range-selector">
-        <div className="date-dropdown">
-          <button 
-            className="date-dropdown-button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            type="button"
-          >
-            {startDate} to {endDate} ▼
-          </button>
-          {isDropdownOpen && (
-            <div className="date-dropdown-content">
-              <div className="date-picker-row">
-                <label>From:</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setError(null);
-                  }}
-                  className="date-input"
-                />
+        <div className="date-range-selector">
+          <div className="date-dropdown">
+            <button
+              className="date-dropdown-button"
+              onClick={toggleDropdown}
+              type="button"
+              aria-expanded={isDropdownOpen}
+              aria-controls="daily-totals-date-menu"
+            >
+              {startDate} to {endDate} ▼
+            </button>
+            {isDropdownOpen && (
+              <div className="date-dropdown-content" id="daily-totals-date-menu">
+                <div className="date-picker-row">
+                  <label htmlFor="daily-totals-from">From:</label>
+                  <input
+                    id="daily-totals-from"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setError(null);
+                    }}
+                    className="date-input"
+                  />
+                </div>
+                <div className="date-picker-row">
+                  <label htmlFor="daily-totals-to">To:</label>
+                  <input
+                    id="daily-totals-to"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setError(null);
+                    }}
+                    className="date-input"
+                  />
+                </div>
+                <button
+                  className="date-apply-button"
+                  onClick={handleApplyRange}
+                  type="button"
+                >
+                  Apply
+                </button>
               </div>
-              <div className="date-picker-row">
-                <label>To:</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setError(null);
-                  }}
-                  className="date-input"
-                />
-              </div>
-              <button 
-                className="date-apply-button"
-                onClick={() => setIsDropdownOpen(false)}
-                type="button"
-              >
-                Apply
-              </button>
-            </div>
-          )}
-        </div>
-      </div><div className="totals-display">
-        <div className="total-item">
-          <span className="total-label">Registrations:</span>
-          <span className="total-count">
-            {loading ? '...' : registrationCount}
-          </span>
-        </div>
-        <div className="total-item">
-          <span className="total-label">Check-ins:</span>
-          <span className="total-count">
-            {loading ? '...' : checkinCount}
-          </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {error && (
-        <div style={{ color: 'red', fontSize: '12px' }}>
-          {error}
+      <div className="totals-display">
+        <div className="total-item">
+          <span className="total-label">Registrations</span>
+          <span className="total-count">{loading ? '...' : registrationCount}</span>
         </div>
-      )}
+        <div className="total-item">
+          <span className="total-label">Check-ins</span>
+          <span className="total-count">{loading ? '...' : checkinCount}</span>
+        </div>
+      </div>
+
+      {error && <div className="daily-totals-error">{error}</div>}
     </div>
   );
 };

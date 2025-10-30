@@ -1153,124 +1153,100 @@ function AdminViewer() {
   }
 
   return (
-    <div className="admin-viewer-container" style={{ position: 'relative' }}>
-      {/* Daily Totals Component - Top Right */}
-      <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 100 }}>
-        <DailyTotals />
-      </div>
-      
-      {/* Top bar: Controls in horizontal layout */}
-      <div style={{ marginBottom: "2rem" }}>
-  {/* Top row with view mode toggles */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-          {/* View mode toggles */}
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <label>
-              <input
-                type="radio"
-                value="both"
-                checked={viewMode === "both"}
-                onChange={() => setViewMode("both")}
-              />
-              Both
-            </label>
-            <label>
-              <input
-                type="radio"
-                value="registrations"
-                checked={viewMode === "registrations"}
-                onChange={() => setViewMode("registrations")}
-              />
-              Registrations Only
-            </label>
-            <label>
-              <input
-                type="radio"
-                value="queue"
-                checked={viewMode === "queue"}
-                onChange={() => setViewMode("queue")}
-              />
-              Live Check-In Queue Only
-            </label>
+    <div className="admin-viewer">
+      <div className="admin-viewer__top">
+        <section className="admin-control-stack">
+          <div className="admin-toggle-row">
+            <div className="admin-toggle-group">
+              <label className="admin-toggle">
+                <input
+                  type="radio"
+                  value="both"
+                  checked={viewMode === "both"}
+                  onChange={() => setViewMode("both")}
+                />
+                <span>Both</span>
+              </label>
+              <label className="admin-toggle">
+                <input
+                  type="radio"
+                  value="registrations"
+                  checked={viewMode === "registrations"}
+                  onChange={() => setViewMode("registrations")}
+                />
+                <span>Registrations Only</span>
+              </label>
+              <label className="admin-toggle">
+                <input
+                  type="radio"
+                  value="queue"
+                  checked={viewMode === "queue"}
+                  onChange={() => setViewMode("queue")}
+                />
+                <span>Live Check-In Queue Only</span>
+              </label>
+            </div>
           </div>
-          
-          {/* Duplicate logout button removed; header already provides logout */}
-        </div>
-        
-        {/* Controls section */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          {/* Archive toggle */}
-          <div style={{ marginBottom: "1rem" }}>
-            <label>
+
+          <div className="admin-archive-row">
+            <label className="admin-checkbox">
               <input
                 type="checkbox"
                 checked={showArchived}
                 onChange={() => setShowArchived(!showArchived)}
-                style={{ marginRight: "0.5rem" }}
               />
-              Show Served
+              <span>Show Served</span>
             </label>
+            {showArchived && searchTerm && (
+              <button
+                type="button"
+                className="admin-secondary-button"
+                style={{ backgroundColor: "#ffc107", color: "#212529" }}
+                onClick={() => setSearchTerm('')}
+              >
+                Clear Search
+              </button>
+            )}
           </div>
-          {/* Filters only when served is checked */}
+
           {showArchived && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+            <div className="admin-filter-grid">
               <input
                 type="text"
+                className="admin-input"
                 placeholder="First Name"
                 value={firstNameFilter}
                 onChange={e => setFirstNameFilter(e.target.value)}
-                style={{ minWidth: "160px" }}
               />
               <input
                 type="text"
+                className="admin-input"
                 placeholder="Last Name"
                 value={lastNameFilter}
                 onChange={e => setLastNameFilter(e.target.value)}
-                style={{ minWidth: "160px" }}
               />
               <input
                 type="date"
+                className="admin-input"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                style={{ minWidth: "160px" }}
               />
               <input
                 type="date"
+                className="admin-input"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                style={{ minWidth: "160px" }}
               />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  style={{
-                    padding: "6px 12px",
-                    backgroundColor: "#ffc107",
-                    color: "#212529",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: "bold"
-                  }}
-                >
-                  Clear Search
-                </button>
-              )}
               {(startDate || endDate || firstNameFilter || lastNameFilter) && (
                 <button
+                  type="button"
+                  className="admin-secondary-button"
+                  style={{ backgroundColor: "#6c757d", color: "white" }}
                   onClick={() => {
                     setFirstNameFilter('');
                     setLastNameFilter('');
                     setStartDate('');
                     setEndDate('');
-                  }}
-                  style={{
-                    padding: "6px 12px",
-                    backgroundColor: "#6c757d",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer"
                   }}
                 >
                   Clear Filters
@@ -1279,12 +1255,12 @@ function AdminViewer() {
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-            <label style={{ fontWeight: "bold", minWidth: "50px" }}>Sort by:</label>
+          <div className="admin-sort-row">
+            <label>Sort by:</label>
             <select
+              className="admin-input"
               value={sortField}
               onChange={e => setSortField(e.target.value)}
-              style={{ padding: "6px 12px", minWidth: "180px" }}
             >
               {showArchived ? (
                 <>
@@ -1305,11 +1281,11 @@ function AdminViewer() {
               )}
             </select>
 
-            <label style={{ fontWeight: "bold" }}>Order:</label>
+            <label>Order:</label>
             <select
+              className="admin-input"
               value={sortDirection}
               onChange={e => setSortDirection(e.target.value)}
-              style={{ padding: "6px 12px", minWidth: "140px" }}
             >
               <option value="asc">Ascending</option>
               <option value="desc">Descending</option>
@@ -1317,6 +1293,9 @@ function AdminViewer() {
 
             {(searchTerm || firstNameFilter || lastNameFilter || startDate || endDate || sortField !== (showArchived ? 'servedAt' : 'submittedAt') || sortDirection !== 'desc') && (
               <button
+                type="button"
+                className="admin-secondary-button"
+                style={{ backgroundColor: "#f44336", color: "white" }}
                 onClick={() => {
                   setSearchTerm('');
                   setFirstNameFilter('');
@@ -1326,23 +1305,20 @@ function AdminViewer() {
                   setSortField(showArchived ? 'servedAt' : 'submittedAt');
                   setSortDirection('desc');
                 }}
-                style={{
-                  padding: "6px 12px",
-                  backgroundColor: "#f44336",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "14px"
-                }}
               >
                 Reset
               </button>
             )}
           </div>
-        </div>
+        </section>
 
-          {/* Dedicated Search Results Section */}
+        <aside className="admin-viewer__totals">
+          <DailyTotals />
+        </aside>
+  </div>
+
+  <div className="admin-main-content">
+  {/* Dedicated Search Results Section */}
           {searchTerm && !showArchived && (viewMode === "both" || viewMode === "registrations") && (
             <div style={{
               backgroundColor: "#f8f9fa",
@@ -1635,8 +1611,9 @@ function AdminViewer() {
 
           {/* Served entries table */}
           {showArchived && resultsCount > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="admin-table">
+            <div className="admin-table-container">
+              <div className="admin-table-scroll">
+                <table className="admin-table">
                 <thead style={{ backgroundColor: '#1976d2' }}>
                   <tr>
                     <th style={{ color: 'white', padding: '12px', textAlign: 'left' }}>Served</th>
@@ -1710,7 +1687,8 @@ function AdminViewer() {
                   })}
                 </tbody>
               </table>
-              <div style={{ marginTop: '0.5rem', fontSize: '12px', color: '#666' }}>
+              </div>
+              <div className="admin-footnote">
                 Showing {filteredServedEntries.length} of {recentServedEntries.length} recent served records (max 200).
               </div>
             </div>
@@ -1718,7 +1696,9 @@ function AdminViewer() {
 
           {/* Active registrations table */}
           {!showArchived && filteredRegistrations.length > 0 && (
-            <table className="admin-table">
+            <div className="admin-table-container">
+              <div className="admin-table-scroll">
+                <table className="admin-table">
             <thead>
               <tr>
                 <th 
@@ -2045,6 +2025,8 @@ function AdminViewer() {
               ))}
             </tbody>
           </table>
+              </div>
+            </div>
           )}
           
           {saveMessage && (
@@ -2106,7 +2088,9 @@ function AdminViewer() {
             </div>
           </div>
           {viewMode !== "registrations" && (
-            <table className="admin-table">
+            <div className="admin-table-container">
+              <div className="admin-table-scroll">
+                <table className="admin-table">
               <thead>
                 <tr>
                   <th className="name-column">Name</th>
@@ -2183,6 +2167,8 @@ function AdminViewer() {
                 ))}
               </tbody>
             </table>
+              </div>
+            </div>
           )}
         </>
       )}
@@ -2191,7 +2177,9 @@ function AdminViewer() {
       {(viewMode === "both" || viewMode === "queue") && showArchived && (
         <>
           <h2 className="admin-heading">Checked In Live Queue</h2>
-          <table className="admin-table">
+          <div className="admin-table-container">
+            <div className="admin-table-scroll">
+              <table className="admin-table">
             <thead>
               <tr>
                 <th className="name-column">Name</th>
@@ -2243,10 +2231,14 @@ function AdminViewer() {
               ))}
             </tbody>
           </table>
+            </div>
+          </div>
         </>
       )}
 
-      {/* Registration Form Modal */}
+    </div>
+
+    {/* Registration Form Modal */}
       {showFormModal && selectedRegistration && (
         <div className="modal-overlay" onClick={closeFormModal}>
           <div className="modal-content form-style-modal" onClick={(e) => e.stopPropagation()}>
@@ -2726,7 +2718,6 @@ function AdminViewer() {
 
       {/* Bottom spacing */}
       <div style={{ height: '3rem' }}></div>
-    </div>
     </div>
   );
 }

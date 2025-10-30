@@ -5,6 +5,166 @@
   min-height: 100vh;
 }
 
+.admin-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 2vw, 32px);
+  padding: clamp(16px, 3vw, 40px);
+  background-color: #f0f2f5;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.admin-viewer__top {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2vw, 24px);
+  margin-bottom: clamp(20px, 2vw, 32px);
+}
+
+.admin-viewer__totals {
+  width: 100%;
+}
+
+.admin-control-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.5vw, 20px);
+  padding: clamp(16px, 3vw, 24px);
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+}
+
+.admin-toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #1f3556;
+  font-size: 0.95rem;
+}
+
+.admin-toggle input[type="radio"] {
+  accent-color: #1f3556;
+}
+
+.admin-archive-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #1f3556;
+}
+
+.admin-checkbox input[type="checkbox"] {
+  accent-color: #1f3556;
+}
+
+.admin-filter-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.admin-filter-grid button {
+  width: 100%;
+}
+
+.admin-sort-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.admin-sort-row label {
+  font-weight: 600;
+  color: #1f3556;
+}
+
+.admin-sort-row select {
+  min-width: 160px;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  font-size: 0.95rem;
+  background-color: #ffffff;
+  color: #1f2937;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: #1f3556;
+  box-shadow: 0 0 0 3px rgba(31, 53, 86, 0.15);
+}
+
+.admin-secondary-button {
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-secondary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
+}
+
+.admin-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.admin-table-container {
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+  padding: 0;
+}
+
+.admin-table-scroll {
+  overflow-x: auto;
+  border-radius: inherit;
+}
+
+.admin-footnote {
+  font-size: 0.78rem;
+  color: #4b5563;
+  font-weight: 500;
+  margin-top: 0.75rem;
+}
+
 .admin-heading {
   font-size: 28px;
   font-weight: 600;
@@ -510,6 +670,7 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
@@ -521,10 +682,12 @@
 @keyframes overlayFadeIn {
   from {
     opacity: 0;
+    -webkit-backdrop-filter: blur(0px);
     backdrop-filter: blur(0px);
   }
   to {
     opacity: 1;
+    -webkit-backdrop-filter: blur(3px);
     backdrop-filter: blur(3px);
   }
 }
@@ -597,6 +760,7 @@ input[type="date"]:focus {
 /* Modal Enhancements */
 .modal-overlay {
   background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -657,6 +821,47 @@ input[type="date"]:focus {
 
 .logout-button.nav-logout:hover {
   box-shadow: 0 3.4px 10.2px rgba(239, 68, 68, 0.4); /* 15% smaller hover shadow */
+}
+
+@media (min-width: 1024px) {
+  .admin-viewer__top {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .admin-control-stack {
+    flex: 1 1 auto;
+  }
+
+  .admin-viewer__totals {
+    flex: 0 0 320px;
+    max-width: 360px;
+    position: sticky;
+    top: clamp(16px, 3vw, 32px);
+  }
+
+  .admin-toggle-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-control-stack {
+    padding: 1.25rem;
+  }
+
+  .admin-archive-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .admin-archive-row .admin-secondary-button,
+  .admin-sort-row .admin-secondary-button {
+    width: 100%;
+  }
 }
 
 /* Responsive Table */
