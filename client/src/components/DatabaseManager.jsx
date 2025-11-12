@@ -8,6 +8,7 @@ import "../AdminViewer.css";
 import "../FormStyles_Green.css";
 import logo from '../ntfb_header_logo_retina.png';
 import AdminViewer from "../AdminViewer";
+import dayjs, { APP_TIME_ZONE, formatDisplayDate } from '../utils/timezone';
 
 function DatabaseManager() {
   const { t } = useTranslation();
@@ -160,6 +161,10 @@ function DatabaseManager() {
     
     // Try to parse other formats
     try {
+      const zoned = dayjs.tz(dateString, APP_TIME_ZONE);
+      if (zoned.isValid()) {
+        return zoned.format('YYYY-MM-DD');
+      }
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
         return date.toISOString().split('T')[0];
@@ -651,7 +656,7 @@ function DatabaseManager() {
     try {
       await updateDoc(doc(db, "registrations", regId), {
         "adminData": fieldsToSave,
-        "adminData.lastUpdated": new Date().toISOString(),
+        "adminData.lastUpdated": dayjs().tz(APP_TIME_ZONE).format(),
         "adminData.updatedBy": 'admin'
       });
       setSaveMessage("Admin fields saved successfully!");
@@ -938,9 +943,7 @@ function DatabaseManager() {
         const firstName = selectedRegistration.formData?.firstName || 'unknown';
         const lastName = selectedRegistration.formData?.lastName || 'unknown';
         const registrationId = selectedRegistration.formData?.id || 'unknown-id';
-        const submittedDate = selectedRegistration.submittedAt && typeof selectedRegistration.submittedAt.toDate === "function"
-          ? selectedRegistration.submittedAt.toDate().toISOString().slice(0, 10)
-          : 'unknown-date';
+        const submittedDate = formatDisplayDate(selectedRegistration.submittedAt, 'unknown-date');
         
         link.download = `TEFAP-Registration-${registrationId}-${firstName}-${lastName}-${submittedDate}.png`;
         link.href = canvas.toDataURL('image/png');
@@ -966,12 +969,22 @@ function DatabaseManager() {
   // --- EXPORT LOGIC STARTS HERE ---
   function getRegistrationsInDateRange() {
     if (!startDate && !endDate) return registrations;
+    const startBoundary = startDate ? dayjs.tz(startDate, APP_TIME_ZONE).startOf('day') : null;
+    const endBoundary = endDate ? dayjs.tz(endDate, APP_TIME_ZONE).endOf('day') : null;
+    const startMillis = startBoundary && startBoundary.isValid() ? startBoundary.valueOf() : null;
+    const endMillis = endBoundary && endBoundary.isValid() ? endBoundary.valueOf() : null;
+
     return registrations.filter(reg => {
       if (!reg.submittedAt) return false;
-      const regDate = reg.submittedAt.toDate ? reg.submittedAt.toDate() : new Date(reg.submittedAt);
-      const afterStart = startDate ? regDate >= new Date(startDate) : true;
-      const beforeEnd = endDate ? regDate <= new Date(endDate + "T23:59:59") : true;
-      return afterStart && beforeEnd;
+      const raw = typeof reg.submittedAt.toDate === 'function'
+        ? reg.submittedAt.toDate().getTime()
+        : new Date(reg.submittedAt).getTime();
+      if (Number.isNaN(raw)) {
+        return false;
+      }
+      if (startMillis !== null && raw < startMillis) return false;
+      if (endMillis !== null && raw > endMillis) return false;
+      return true;
     });
   }
 

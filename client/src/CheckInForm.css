@@ -57,29 +57,42 @@
 
 .checkin-methods button {
   padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #64748b;
+  border-radius: 10px;
+  border: 2px solid #d7dee9;
+  background: #ffffff;
+  color: #3e4c63;
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   position: relative;
   flex: 1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
-.checkin-methods button:hover {
-  background: rgba(106, 168, 79, 0.1);
-  color: #6aa84f;
-  transform: translateY(-1px);
+.checkin-methods button:hover,
+.checkin-methods button:focus {
+  border-color: #93c29a;
+  color: #2f5f36;
+  box-shadow: 0 4px 12px rgba(106, 168, 79, 0.25);
+}
+
+.checkin-methods button:focus-visible {
+  outline: 3px solid rgba(106, 168, 79, 0.45);
+  outline-offset: 2px;
 }
 
 .checkin-methods button.active {
-  background: #6aa84f;
+  background: linear-gradient(135deg, #6aa84f 0%, #4f8b36 100%);
   color: white;
-  box-shadow: 0 4px 12px rgba(106, 168, 79, 0.3);
+  border-color: #4f8b36;
+  box-shadow: 0 6px 16px rgba(79, 139, 54, 0.35);
   transform: translateY(-1px);
+}
+
+.checkin-methods button.active:hover,
+.checkin-methods button.active:focus {
+  color: #ffffff;
 }
 
 .form-grid {

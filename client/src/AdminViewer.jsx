@@ -7,6 +7,7 @@ import "./AdminViewer.css";
 import "./FormStyles_Green.css";
 import logo from './ntfb_header_logo_retina.png';
 import DailyTotals from './components/DailyTotals';
+import dayjs, { APP_TIME_ZONE, formatDisplayDate, formatDateTimeDisplay, formatTimeDisplay } from './utils/timezone';
 
 // Staff Signature Pad Component
 function StaffSignaturePad({ registrationId, onSave, onCancel }) {
@@ -148,6 +149,10 @@ const getTimestampValue = (value) => {
     return Number.isNaN(value) ? null : value;
   }
   if (typeof value === 'string') {
+    const zoned = dayjs.tz(value, APP_TIME_ZONE);
+    if (zoned.isValid()) {
+      return zoned.valueOf();
+    }
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
   }
@@ -290,6 +295,15 @@ function AdminViewer() {
   // Queue sorting state variables
   const [queueSortField, setQueueSortField] = useState('checkInTime');
   const [queueSortDirection, setQueueSortDirection] = useState('desc');
+
+  const startBoundary = useMemo(() => (
+    startDate ? dayjs.tz(startDate, APP_TIME_ZONE).startOf('day') : null
+  ), [startDate]);
+  const endBoundary = useMemo(() => (
+    endDate ? dayjs.tz(endDate, APP_TIME_ZONE).endOf('day') : null
+  ), [endDate]);
+  const startBoundaryMillis = startBoundary && startBoundary.isValid() ? startBoundary.valueOf() : null;
+  const endBoundaryMillis = endBoundary && endBoundary.isValid() ? endBoundary.valueOf() : null;
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -487,7 +501,7 @@ function AdminViewer() {
     try {
       await updateDoc(doc(db, "registrations", regId), {
         "adminData": fieldsToSave,
-        "adminData.lastUpdated": new Date().toISOString(),
+  "adminData.lastUpdated": dayjs().tz(APP_TIME_ZONE).format(),
         "adminData.updatedBy": user?.email || 'unknown'
       });
       setSaveMessage("Admin fields saved successfully!");
@@ -754,9 +768,7 @@ function AdminViewer() {
         const firstName = selectedRegistration.formData?.firstName || 'unknown';
         const lastName = selectedRegistration.formData?.lastName || 'unknown';
         const registrationId = selectedRegistration.formData?.id || 'unknown-id';
-        const submittedDate = selectedRegistration.submittedAt && typeof selectedRegistration.submittedAt.toDate === "function"
-          ? selectedRegistration.submittedAt.toDate().toISOString().slice(0, 10)
-          : 'unknown-date';
+        const submittedDate = formatDisplayDate(selectedRegistration.submittedAt, 'unknown-date');
         
         link.download = `TEFAP-Registration-${registrationId}-${firstName}-${lastName}-${submittedDate}.png`;
         link.href = canvas.toDataURL('image/png');
@@ -789,18 +801,13 @@ function AdminViewer() {
     const lastNameMatch = lastName
       .toLowerCase()
       .includes(lastNameFilter.toLowerCase());
+    const checkInMillis = getTimestampValue(item.checkInTime);
     let dateMatch = true;
-    if (startDate) {
-      dateMatch =
-        dateMatch &&
-        item.checkInTime?.toDate() >= new Date(startDate);
+    if (startBoundaryMillis !== null) {
+      dateMatch = dateMatch && checkInMillis !== null && checkInMillis >= startBoundaryMillis;
     }
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setDate(end.getDate() + 1);
-      dateMatch =
-        dateMatch &&
-        item.checkInTime?.toDate() < end;
+    if (endBoundaryMillis !== null) {
+      dateMatch = dateMatch && checkInMillis !== null && checkInMillis <= endBoundaryMillis;
     }
     return firstNameMatch && lastNameMatch && dateMatch;
   });
@@ -845,12 +852,6 @@ function AdminViewer() {
     const searchLower = searchTerm.trim().toLowerCase();
     const firstLower = firstNameFilter.trim().toLowerCase();
     const lastLower = lastNameFilter.trim().toLowerCase();
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    if (end) {
-      end.setDate(end.getDate() + 1);
-    }
-
     const effectiveSortField = sortField === 'servedAt' ? 'submittedAt' : sortField;
 
     const filtered = activeRegistrations.filter(reg => {
@@ -858,13 +859,12 @@ function AdminViewer() {
       const lastNameMatch = !lastLower || reg.formData?.lastName?.toLowerCase().includes(lastLower);
 
       let dateMatch = true;
-      if (start) {
-        const submitted = reg.submittedAt?.toDate();
-        dateMatch = dateMatch && submitted && submitted >= start;
+      const submittedMillis = getTimestampValue(reg.submittedAt);
+      if (startBoundaryMillis !== null) {
+        dateMatch = dateMatch && submittedMillis !== null && submittedMillis >= startBoundaryMillis;
       }
-      if (end) {
-        const submitted = reg.submittedAt?.toDate();
-        dateMatch = dateMatch && submitted && submitted < end;
+      if (endBoundaryMillis !== null) {
+        dateMatch = dateMatch && submittedMillis !== null && submittedMillis <= endBoundaryMillis;
       }
 
       if (!searchLower) {
@@ -931,7 +931,7 @@ function AdminViewer() {
     });
 
     return sorted;
-  }, [activeRegistrations, firstNameFilter, lastNameFilter, startDate, endDate, searchTerm, sortField, sortDirection]);
+  }, [activeRegistrations, firstNameFilter, lastNameFilter, startBoundaryMillis, endBoundaryMillis, searchTerm, sortField, sortDirection]);
 
   const recentServedEntries = useMemo(() => {
     const servedRegistrations = registrations
@@ -1013,13 +1013,6 @@ function AdminViewer() {
     const searchLower = searchTerm.trim().toLowerCase();
     const firstLower = firstNameFilter.trim().toLowerCase();
     const lastLower = lastNameFilter.trim().toLowerCase();
-    const start = startDate ? new Date(startDate).getTime() : null;
-    const end = endDate ? (() => {
-      const d = new Date(endDate);
-      d.setDate(d.getDate() + 1);
-      return d.getTime();
-    })() : null;
-
     const filtered = recentServedEntries.filter(entry => {
       if (firstLower && !entry.firstName.toLowerCase().includes(firstLower)) {
         return false;
@@ -1028,10 +1021,10 @@ function AdminViewer() {
         return false;
       }
 
-      if (start && (!entry.servedAt || entry.servedAt < start)) {
+      if (startBoundaryMillis !== null && (!entry.servedAt || entry.servedAt < startBoundaryMillis)) {
         return false;
       }
-      if (end && (!entry.servedAt || entry.servedAt >= end)) {
+      if (endBoundaryMillis !== null && (!entry.servedAt || entry.servedAt > endBoundaryMillis)) {
         return false;
       }
 
@@ -1091,7 +1084,7 @@ function AdminViewer() {
     });
 
     return sorted;
-  }, [recentServedEntries, firstNameFilter, lastNameFilter, startDate, endDate, searchTerm, sortField, sortDirection]);
+  }, [recentServedEntries, firstNameFilter, lastNameFilter, startBoundaryMillis, endBoundaryMillis, searchTerm, sortField, sortDirection]);
 
   const resultsCount = showArchived ? filteredServedEntries.length : filteredRegistrations.length;
   const resultsLabel = showArchived ? 'served record' : 'registration';
@@ -1628,7 +1621,7 @@ function AdminViewer() {
                 </thead>
                 <tbody>
                   {filteredServedEntries.map(entry => {
-                    const servedDisplay = entry.servedAt ? new Date(entry.servedAt).toLocaleString() : 'N/A';
+                    const servedDisplay = formatDateTimeDisplay(entry.servedAt, 'N/A');
                     const addressParts = [entry.address.address1, entry.address.city, entry.address.state, entry.address.zip]
                       .filter(Boolean)
                       .join(', ');
@@ -2111,9 +2104,7 @@ function AdminViewer() {
                     </td>
                     <td data-label="ID">{item.formData?.id || item.id}</td>
                     <td data-label="Check-In Time">
-                      {item.checkInTime?.seconds
-                        ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()
-                        : ""}
+                      {formatTimeDisplay(item.checkInTime, '')}
                     </td>
                     <td data-label="Picking up for">
                       <div style={{ fontSize: '12px', maxWidth: '150px' }}>
@@ -2198,9 +2189,7 @@ function AdminViewer() {
                   </td>
                   <td data-label="ID">{item.formData?.id || item.id}</td>
                   <td data-label="Check-In Time">
-                    {item.checkInTime?.seconds
-                      ? new Date(item.checkInTime.seconds * 1000).toLocaleTimeString()
-                      : ""}
+                    {formatTimeDisplay(item.checkInTime, '')}
                   </td>
                   <td data-label="Picking up for">
                     <div style={{ fontSize: '12px', maxWidth: '150px' }}>
@@ -2256,9 +2245,7 @@ function AdminViewer() {
                   <h2>Register for Food Services</h2>
                 </div>
                 <div className="submission-info">
-                  Submitted: {selectedRegistration.submittedAt && typeof selectedRegistration.submittedAt.toDate === "function" 
-                    ? selectedRegistration.submittedAt.toDate().toLocaleString() 
-                    : 'N/A'} | ID: {selectedRegistration.formData?.id || selectedRegistration.id}
+                  Submitted: {formatDateTimeDisplay(selectedRegistration.submittedAt, 'N/A')} | ID: {selectedRegistration.formData?.id || selectedRegistration.id}
                 </div>
 
                 <div className="form-section">

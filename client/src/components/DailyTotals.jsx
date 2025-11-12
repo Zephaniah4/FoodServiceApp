@@ -1,17 +1,56 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  startAt,
+  endAt,
+  Timestamp
+} from 'firebase/firestore';
+import { formatDateInput, toRangeMillis } from '../utils/timezone';
 import './DailyTotals.css';
 
+const getTimestampValue = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+  }
+  if (typeof value === 'object' && 'seconds' in value && typeof value.seconds === 'number') {
+    return value.seconds * 1000;
+  }
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? null : value;
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+  }
+  return null;
+};
+
+const getValueByPath = (data, path) => {
+  return path.split('.').reduce((current, key) => {
+    if (current === null || current === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(current)) {
+      const index = Number(key);
+      return Number.isNaN(index) ? undefined : current[index];
+    }
+    return current[key];
+  }, data);
+};
+
 const DailyTotals = () => {
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState(() => formatDateInput());
+  const [endDate, setEndDate] = useState(() => formatDateInput());
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [registrationCount, setRegistrationCount] = useState(0);
   const [checkinCount, setCheckinCount] = useState(0);
@@ -19,49 +58,99 @@ const DailyTotals = () => {
   const [error, setError] = useState(null);
 
   const fetchDailyCounts = useCallback(async () => {
-    if (!startDate || !endDate) return;
-    
+    if (!startDate || !endDate) {
+      return;
+    }
+
+    const { startMillis, endMillis } = toRangeMillis(startDate, endDate);
+
+    if (Number.isNaN(startMillis) || Number.isNaN(endMillis)) {
+      setError('Invalid date range. Please choose valid dates.');
+      setRegistrationCount(0);
+      setCheckinCount(0);
+      return;
+    }
+
+    if (startMillis > endMillis) {
+      setError('Start date cannot be after end date.');
+      setRegistrationCount(0);
+      setCheckinCount(0);
+      return;
+    }
+
+    const startTimestamp = Timestamp.fromMillis(startMillis);
+    const endTimestamp = Timestamp.fromMillis(endMillis);
+
+    const countDocumentsInRange = async (collectionName, primaryField, fallbackFields = []) => {
+      const collectionRef = collection(db, collectionName);
+
+      const runRangeQuery = async () => {
+        const rangeQuery = query(
+          collectionRef,
+          orderBy(primaryField),
+          startAt(startTimestamp),
+          endAt(endTimestamp)
+        );
+        const snapshot = await getDocs(rangeQuery);
+        return snapshot.size;
+      };
+
+      const runFallbackScan = async () => {
+        const snapshot = await getDocs(collectionRef);
+        return snapshot.docs.reduce((count, doc) => {
+          const data = doc.data();
+          const candidateFields = [primaryField, ...fallbackFields];
+          const isInRange = candidateFields.some((path) => {
+            const rawValue = path ? getValueByPath(data, path) : undefined;
+            const timestampValue = getTimestampValue(rawValue);
+            return timestampValue !== null && timestampValue >= startMillis && timestampValue <= endMillis;
+          });
+          return isInRange ? count + 1 : count;
+        }, 0);
+      };
+
+      try {
+        return await runRangeQuery();
+      } catch (err) {
+        if (err?.code === 'failed-precondition') {
+          console.warn(
+            `Missing Firestore index for ${collectionName}.${primaryField}. Falling back to client-side filtering.`,
+            err
+          );
+          return await runFallbackScan();
+        }
+        throw err;
+      }
+    };
+
     setLoading(true);
+    setError(null);
+
     try {
-      // Create start and end timestamps for the date range
-      const startTimestamp = Timestamp.fromDate(new Date(startDate + 'T00:00:00'));
-      const endTimestamp = Timestamp.fromDate(new Date(endDate + 'T23:59:59'));
+      const [registrationsTotal, checkinsTotal] = await Promise.all([
+        countDocumentsInRange('registrations', 'submittedAt', [
+          'originalSubmittedAt',
+          'updatedAt',
+          'formData.servedAt',
+          'formData.archiveDate',
+          'formData.archivedAt'
+        ]),
+        countDocumentsInRange('checkins', 'checkInTime', [
+          'servedAt',
+          'timestamp',
+          'updatedAt'
+        ])
+      ]);
 
-      // Query ALL registrations in date range (using submittedAt field)
-      const registrationsQuery = query(
-        collection(db, 'registrations'),
-        where('submittedAt', '>=', startTimestamp),
-        where('submittedAt', '<=', endTimestamp)
+      setRegistrationCount(registrationsTotal);
+      setCheckinCount(checkinsTotal);
+
+      console.log(
+        `Found ${registrationsTotal} registrations and ${checkinsTotal} check-ins from ${startDate} to ${endDate}`
       );
-      const registrationsSnapshot = await getDocs(registrationsQuery);
-      
-      // Count all registrations regardless of status (live, archived, etc.)
-      const allRegistrations = registrationsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setRegistrationCount(allRegistrations.length);
-
-      // Query ALL check-ins in date range (using checkInTime field)
-      const checkinsQuery = query(
-        collection(db, 'checkins'),
-        where('checkInTime', '>=', startTimestamp),
-        where('checkInTime', '<=', endTimestamp)
-      );
-      const checkinsSnapshot = await getDocs(checkinsQuery);
-      
-      // Count all check-ins regardless of status
-      const allCheckins = checkinsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setCheckinCount(allCheckins.length);
-
-      console.log(`Found ${allRegistrations.length} registrations and ${allCheckins.length} check-ins from ${startDate} to ${endDate}`);
-
     } catch (error) {
       console.error('Error fetching daily counts:', error);
-      setError('Failed to load data');
+      setError('Failed to load data. Please try again or verify Firestore permissions.');
       setRegistrationCount(0);
       setCheckinCount(0);
     } finally {

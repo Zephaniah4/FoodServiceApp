@@ -11,6 +11,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import dayjs from 'dayjs';
+import { formatDateInput } from './utils/timezone';
 
 export default function RegistrationForm() {
   const { t } = useTranslation();
@@ -345,13 +346,13 @@ export default function RegistrationForm() {
       let tefapDate, tefapEligible;
       
       if (isRenewal) {
-        // This is a TEFAP renewal - update TEFAP date to current date
-        tefapDate = new Date().toISOString().slice(0, 10);
+        // This is a TEFAP renewal - update TEFAP date to current date (Central Time)
+        tefapDate = formatDateInput();
         tefapEligible = existingReg.formData?.tefapEligible !== undefined ? existingReg.formData.tefapEligible : false;
         console.log('🔄 TEFAP Renewal - updating TEFAP date to:', tefapDate);
       } else {
         // Regular update - preserve existing TEFAP data
-        tefapDate = existingReg.formData?.tefapDate || new Date().toISOString().slice(0, 10);
+        tefapDate = existingReg.formData?.tefapDate || formatDateInput();
         tefapEligible = existingReg.formData?.tefapEligible !== undefined ? existingReg.formData.tefapEligible : false;
       }
       
@@ -458,8 +459,8 @@ export default function RegistrationForm() {
       
       const signature = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
       
-      // Automatically set TEFAP date to current date for new registrations
-      const currentDate = new Date().toISOString().slice(0, 10); // Format: YYYY-MM-DD
+  // Automatically set TEFAP date to current date for new registrations
+  const currentDate = formatDateInput();
       
       const formWithSignature = { 
         ...formData, 

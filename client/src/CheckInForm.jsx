@@ -261,9 +261,27 @@ export default function CheckInForm() {
         </select>
       </div>
       <h2 className="checkin-title">{t('checkin.title')}</h2> {/* Apply the checkin-title class */}
-      <div className="checkin-methods">
-        <button onClick={() => setMethod('id')} className={method === 'id' ? 'active' : ''}>{t('checkin.useId')}</button>
-        <button onClick={() => setMethod('name')} className={method === 'name' ? 'active' : ''}>{t('checkin.useNameDob')}</button>
+      <div className="checkin-methods" role="tablist" aria-label={t('checkin.methodSelectorLabel')}>
+        <button
+          type="button"
+          onClick={() => setMethod('id')}
+          className={method === 'id' ? 'active' : ''}
+          aria-selected={method === 'id'}
+          role="tab"
+          tabIndex={method === 'id' ? 0 : -1}
+        >
+          {t('checkin.useId')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMethod('name')}
+          className={method === 'name' ? 'active' : ''}
+          aria-selected={method === 'name'}
+          role="tab"
+          tabIndex={method === 'name' ? 0 : -1}
+        >
+          {t('checkin.useNameDob')}
+        </button>
       </div>
 
       <form onSubmit={handleCheckIn} className="form-grid"> {/* Apply the form-grid class */}
