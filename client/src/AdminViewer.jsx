@@ -1086,8 +1086,24 @@ function AdminViewer() {
     return sorted;
   }, [recentServedEntries, firstNameFilter, lastNameFilter, startBoundaryMillis, endBoundaryMillis, searchTerm, sortField, sortDirection]);
 
-  const resultsCount = showArchived ? filteredServedEntries.length : filteredRegistrations.length;
-  const resultsLabel = showArchived ? 'served record' : 'registration';
+  const displayedServedEntries = useMemo(() => {
+    if (!showArchived) {
+      return filteredServedEntries;
+    }
+
+    if (viewMode === "registrations") {
+      return filteredServedEntries.filter(entry => entry.type === 'registration');
+    }
+
+    return filteredServedEntries;
+  }, [filteredServedEntries, showArchived, viewMode]);
+
+  const resultsCount = showArchived ? displayedServedEntries.length : filteredRegistrations.length;
+  const resultsLabel = showArchived
+    ? (viewMode === "registrations" ? 'served registration' : 'served record')
+    : 'registration';
+  const showRegistrationSections = viewMode === "both" || viewMode === "registrations";
+  const showQueueSections = viewMode === "both" || viewMode === "queue";
   const sortFieldLabels = {
     servedAt: 'Served Date',
     submittedAt: 'Submission Date',
@@ -1312,7 +1328,7 @@ function AdminViewer() {
 
   <div className="admin-main-content">
   {/* Dedicated Search Results Section */}
-          {searchTerm && !showArchived && (viewMode === "both" || viewMode === "registrations") && (
+          {searchTerm && !showArchived && showRegistrationSections && (
             <div style={{
               backgroundColor: "#f8f9fa",
               border: "2px solid #2196F3",
@@ -1493,117 +1509,121 @@ function AdminViewer() {
             </div>
           )}
 
-          {/* Section heading */}
-          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-            <h2
-              className="admin-heading"
-              style={{ textAlign: "center", marginBottom: "0.5rem" }}
-            >
-              {showArchived
-                ? (searchTerm ? `🔍 Served Results for "${searchTerm}"` : "Served Records")
-                : (searchTerm ? `🔍 Search Results for "${searchTerm}"` : "Registrations Queue")}
-            </h2>
-            <div style={{ fontSize: "16px", color: "#666", fontStyle: searchTerm ? 'italic' : 'normal' }}>
-              {showArchived
-                ? "Showing the most recent 200 served entries combined from registrations and check-ins"
-                : "Manage live registration submissions"}
-            </div>
-          </div>
-
-          {/* Enhanced Results count with search context */}
-          <div style={{
-            marginBottom: "1rem",
-            padding: searchTerm ? "12px 16px" : "8px 12px",
-            backgroundColor: searchTerm ? "#e3f2fd" : "#f5f5f5",
-            borderRadius: "4px",
-            fontSize: searchTerm ? "16px" : "14px",
-            color: searchTerm ? "#1976d2" : "#666",
-            border: searchTerm ? "2px solid #2196F3" : "none",
-            fontWeight: searchTerm ? "bold" : "normal"
-          }}>
-            {searchTerm ? (
-              <div>
-                <div style={{ marginBottom: "4px" }}>
-                  📊 Found {resultsCount} {resultsLabel}{resultsCount !== 1 ? 's' : ''} matching your search
-                </div>
-                <div style={{ fontSize: "14px", fontWeight: "normal", color: "#666" }}>
-                  Search terms: "{searchTerm}"
-                  {(firstNameFilter || lastNameFilter || startDate || endDate) && " • Additional filters applied"}
-                  {sortLabel && ` • Sorted by ${sortLabel} (${sortDirection}ending)`}
+          {showRegistrationSections && (
+            <>
+              {/* Section heading */}
+              <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                <h2
+                  className="admin-heading"
+                  style={{ textAlign: "center", marginBottom: "0.5rem" }}
+                >
+                  {showArchived
+                    ? (searchTerm ? `🔍 Served Results for "${searchTerm}"` : "Served Records")
+                    : (searchTerm ? `🔍 Search Results for "${searchTerm}"` : "Registrations Queue")}
+                </h2>
+                <div style={{ fontSize: "16px", color: "#666", fontStyle: searchTerm ? 'italic' : 'normal' }}>
+                  {showArchived
+                    ? "Showing the most recent 200 served entries combined from registrations and check-ins"
+                    : "Manage live registration submissions"}
                 </div>
               </div>
-            ) : (
-              <div>
-                Showing {resultsCount} {resultsLabel}{resultsCount !== 1 ? 's' : ''}
-                {(firstNameFilter || lastNameFilter || startDate || endDate) && " (filtered)"}
-                {sortLabel && ` • Sorted by ${sortLabel} (${sortDirection}ending)`}
-              </div>
-            )}
-          </div>
 
-          {/* Empty state */}
-          {resultsCount === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "2rem",
-                backgroundColor: showArchived ? "#e8f5e9" : "#fff3cd",
-                border: `2px solid ${showArchived ? '#66bb6a' : '#ffc107'}`,
-                borderRadius: "8px",
-                marginBottom: "1rem"
-              }}
-            >
-              <h3 style={{ color: showArchived ? "#2e7d32" : "#856404", marginBottom: "1rem" }}>
-                {showArchived ? "No Served Entries Found" : "No Registrations Found"}
-              </h3>
-              <p style={{ color: showArchived ? "#2e7d32" : "#856404", marginBottom: "1rem" }}>
-                {searchTerm
-                  ? `No ${resultsLabel}s found matching "${searchTerm}".`
-                  : `No ${resultsLabel}s match the current filters.`}
-              </p>
-              <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    style={{
-                      padding: "8px 16px",
-                      backgroundColor: showArchived ? "#66bb6a" : "#ffc107",
-                      color: showArchived ? "white" : "#212529",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontWeight: "bold"
-                    }}
-                  >
-                    Clear Search
-                  </button>
-                )}
-                {(firstNameFilter || lastNameFilter || startDate || endDate) && (
-                  <button
-                    onClick={() => {
-                      setFirstNameFilter('');
-                      setLastNameFilter('');
-                      setStartDate('');
-                      setEndDate('');
-                    }}
-                    style={{
-                      padding: "8px 16px",
-                      backgroundColor: "#6c757d",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Clear Filters
-                  </button>
+              {/* Enhanced Results count with search context */}
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: searchTerm ? "12px 16px" : "8px 12px",
+                  backgroundColor: searchTerm ? "#e3f2fd" : "#f5f5f5",
+                  borderRadius: "4px",
+                  fontSize: searchTerm ? "16px" : "14px",
+                  color: searchTerm ? "#1976d2" : "#666",
+                  border: searchTerm ? "2px solid #2196F3" : "none",
+                  fontWeight: searchTerm ? "bold" : "normal"
+                }}
+              >
+                {searchTerm ? (
+                  <div>
+                    <div style={{ marginBottom: "4px" }}>
+                      📊 Found {resultsCount} {resultsLabel}{resultsCount !== 1 ? 's' : ''} matching your search
+                    </div>
+                    <div style={{ fontSize: "14px", fontWeight: "normal", color: "#666" }}>
+                      Search terms: "{searchTerm}"
+                      {(firstNameFilter || lastNameFilter || startDate || endDate) && " • Additional filters applied"}
+                      {sortLabel && ` • Sorted by ${sortLabel} (${sortDirection}ending)`}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    Showing {resultsCount} {resultsLabel}{resultsCount !== 1 ? 's' : ''}
+                    {(firstNameFilter || lastNameFilter || startDate || endDate) && " (filtered)"}
+                    {sortLabel && ` • Sorted by ${sortLabel} (${sortDirection}ending)`}
+                  </div>
                 )}
               </div>
-            </div>
-          )}
 
-          {/* Served entries table */}
-          {showArchived && resultsCount > 0 && (
+              {/* Empty state */}
+              {resultsCount === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "2rem",
+                    backgroundColor: showArchived ? "#e8f5e9" : "#fff3cd",
+                    border: `2px solid ${showArchived ? '#66bb6a' : '#ffc107'}`,
+                    borderRadius: "8px",
+                    marginBottom: "1rem"
+                  }}
+                >
+                  <h3 style={{ color: showArchived ? "#2e7d32" : "#856404", marginBottom: "1rem" }}>
+                    {showArchived ? "No Served Entries Found" : "No Registrations Found"}
+                  </h3>
+                  <p style={{ color: showArchived ? "#2e7d32" : "#856404", marginBottom: "1rem" }}>
+                    {searchTerm
+                      ? `No ${resultsLabel}s found matching "${searchTerm}".`
+                      : `No ${resultsLabel}s match the current filters.`}
+                  </p>
+                  <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        style={{
+                          padding: "8px 16px",
+                          backgroundColor: showArchived ? "#66bb6a" : "#ffc107",
+                          color: showArchived ? "white" : "#212529",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontWeight: "bold"
+                        }}
+                      >
+                        Clear Search
+                      </button>
+                    )}
+                    {(firstNameFilter || lastNameFilter || startDate || endDate) && (
+                      <button
+                        onClick={() => {
+                          setFirstNameFilter('');
+                          setLastNameFilter('');
+                          setStartDate('');
+                          setEndDate('');
+                        }}
+                        style={{
+                          padding: "8px 16px",
+                          backgroundColor: "#6c757d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Served entries table */}
+              {showArchived && resultsCount > 0 && (
             <div className="admin-table-container">
               <div className="admin-table-scroll">
                 <table className="admin-table">
@@ -1620,7 +1640,7 @@ function AdminViewer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredServedEntries.map(entry => {
+                  {displayedServedEntries.map(entry => {
                     const servedDisplay = formatDateTimeDisplay(entry.servedAt, 'N/A');
                     const addressParts = [entry.address.address1, entry.address.city, entry.address.state, entry.address.zip]
                       .filter(Boolean)
@@ -1682,7 +1702,7 @@ function AdminViewer() {
               </table>
               </div>
               <div className="admin-footnote">
-                Showing {filteredServedEntries.length} of {recentServedEntries.length} recent served records (max 200).
+                Showing {displayedServedEntries.length} of {recentServedEntries.length} recent served records (max 200).
               </div>
             </div>
           )}
@@ -2021,6 +2041,8 @@ function AdminViewer() {
               </div>
             </div>
           )}
+            </>
+          )}
           
           {saveMessage && (
             <div className="save-message-overlay" onClick={() => setSaveMessage("")}>
@@ -2038,8 +2060,8 @@ function AdminViewer() {
             </div>
           )}
 
-      {/* Live Check-In Queue Table */}
-      {(viewMode === "both" || viewMode === "queue") && !showArchived && (
+    {/* Live Check-In Queue Table */}
+    {showQueueSections && !showArchived && (
         <>
           <h2 className="admin-heading">Live Check-In Queue</h2>
           <div className="filter-container">
@@ -2164,8 +2186,8 @@ function AdminViewer() {
         </>
       )}
 
-      {/* Checked In Live Check-In Queue Table */}
-      {(viewMode === "both" || viewMode === "queue") && showArchived && (
+  {/* Checked In Live Check-In Queue Table */}
+  {showQueueSections && showArchived && (
         <>
           <h2 className="admin-heading">Checked In Live Queue</h2>
           <div className="admin-table-container">

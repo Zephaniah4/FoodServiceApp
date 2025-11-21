@@ -8,7 +8,7 @@ import "../AdminViewer.css";
 import "../FormStyles_Green.css";
 import logo from '../ntfb_header_logo_retina.png';
 import AdminViewer from "../AdminViewer";
-import dayjs, { APP_TIME_ZONE, formatDisplayDate } from '../utils/timezone';
+import dayjs, { APP_TIME_ZONE, formatDateTimeDisplay, formatDisplayDate } from '../utils/timezone';
 
 function DatabaseManager() {
   const { t } = useTranslation();
@@ -40,6 +40,10 @@ function DatabaseManager() {
   const [sortField, setSortField] = useState('submittedAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
+  const [recordScope, setRecordScope] = useState('registrations'); // registrations | checkins | both
+  const [specificDate, setSpecificDate] = useState('');
+  const [checkins, setCheckins] = useState([]);
+  const [checkinsLoading, setCheckinsLoading] = useState(false);
   
   // Debounce search term to avoid excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -49,100 +53,11 @@ function DatabaseManager() {
       .map(([id]) => id)
   ), [selectedRegistrations]);
   const selectedCount = selectedIds.length;
-  const isBatchApplyDisabled = isApplyingBatch || selectedCount === 0 || (!batchTefapDate && !batchLocation);
+  const isBatchApplyDisabled = recordScope !== 'registrations' || isApplyingBatch || selectedCount === 0 || (!batchTefapDate && !batchLocation);
 
   // Database pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50); // Records per page
-  // OPTIMIZED: Memoized filtering with debounced search (placed after all state to avoid conditional hooks)
-  const filteredRegistrations = useMemo(() => {
-    const searchLower = debouncedSearchTerm.toLowerCase().trim();
-    
-    return registrations
-      .filter(reg => {
-        // Name filtering (only if filter is set)
-        if (firstNameFilter && !reg.formData.firstName?.toLowerCase().includes(firstNameFilter.toLowerCase())) {
-          return false;
-        }
-        if (lastNameFilter && !reg.formData.lastName?.toLowerCase().includes(lastNameFilter.toLowerCase())) {
-          return false;
-        }
-        
-        // Search functionality (only if search term exists)
-        if (searchLower) {
-          const fullName = `${reg.formData?.firstName || ''} ${reg.formData?.lastName || ''}`.toLowerCase();
-          const phone = (reg.formData?.phone || '').toLowerCase();
-          const address = (reg.formData?.address || '').toLowerCase();
-          const city = (reg.formData?.city || '').toLowerCase();
-          const id = (reg.formData?.id || reg.id || '').toLowerCase();
-          const dateOfBirth = (reg.formData?.dateOfBirth || '').toLowerCase();
-          
-          const searchMatch = fullName.includes(searchLower) || 
-                             phone.includes(searchLower) || 
-                             address.includes(searchLower) ||
-                             city.includes(searchLower) ||
-                             id.includes(searchLower) ||
-                             dateOfBirth.includes(searchLower);
-          
-          if (!searchMatch) return false;
-        }
-        
-        return true;
-      });
-  }, [registrations, firstNameFilter, lastNameFilter, debouncedSearchTerm]);
-
-  // OPTIMIZED: Memoized sorting
-  const sortedAndFilteredRegistrations = useMemo(() => {
-    return [...filteredRegistrations]
-      .sort((a, b) => {
-        // Sorting logic
-        let aValue, bValue;
-        
-        switch (sortField) {
-          case 'name':
-            aValue = `${a.formData?.firstName || ''} ${a.formData?.lastName || ''}`.toLowerCase();
-            bValue = `${b.formData?.firstName || ''} ${b.formData?.lastName || ''}`.toLowerCase();
-            break;
-          case 'id':
-            aValue = a.formData?.id || '';
-            bValue = b.formData?.id || '';
-            break;
-          case 'dateOfBirth':
-            aValue = a.formData?.dateOfBirth || '';
-            bValue = b.formData?.dateOfBirth || '';
-            break;
-          case 'phone':
-            aValue = a.formData?.phone || '';
-            bValue = b.formData?.phone || '';
-            break;
-          case 'address':
-            aValue = a.formData?.address || '';
-            bValue = b.formData?.address || '';
-            break;
-          case 'submittedAt':
-          default:
-            aValue = a.submittedAt?.toDate() || new Date(0);
-            bValue = b.submittedAt?.toDate() || new Date(0);
-            break;
-        }
-        
-        if (sortField === 'submittedAt') {
-          // For dates, compare as Date objects
-          if (sortDirection === 'asc') {
-            return aValue - bValue;
-          } else {
-            return bValue - aValue;
-          }
-        } else {
-          // For strings, use localeCompare
-          if (sortDirection === 'asc') {
-            return aValue.toString().localeCompare(bValue.toString());
-          } else {
-            return bValue.toString().localeCompare(aValue.toString());
-          }
-        }
-      });
-  }, [filteredRegistrations, sortField, sortDirection]);
 
   // Helper function to convert date from MM-DD-YYYY to YYYY-MM-DD format for HTML date input
   const convertDateForInput = (dateString) => {
@@ -194,6 +109,46 @@ function DatabaseManager() {
     return dateString; // Return original if conversion fails
   };
 
+  const getTimestampValue = useCallback((value) => {
+    if (!value) return null;
+    if (typeof value === 'number') return value;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'object') {
+      if (typeof value.toDate === 'function') {
+        return value.toDate().getTime();
+      }
+      if (typeof value.seconds === 'number') {
+        return value.seconds * 1000 + (value.nanoseconds || 0) / 1_000_000;
+      }
+    }
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.valueOf() : null;
+  }, []);
+
+  const buildSearchIndex = useCallback((record) => {
+    if (!record) return '';
+    const values = [];
+    const form = record.formData || {};
+    values.push(form.firstName, form.lastName, form.fullName, form.name, form.id);
+    values.push(form.phone, form.address, form.apartment, form.city, form.state, form.zip, form.dateOfBirth, form.email);
+    values.push(record.userId, record.name, record.household, record.status, record.location);
+
+    return values
+      .flatMap((value) => {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+          return value.map((entry) => (typeof entry === 'string' ? entry : entry?.value));
+        }
+        if (typeof value === 'object') {
+          return Object.values(value);
+        }
+        return [value];
+      })
+      .filter(Boolean)
+      .map((item) => String(item).toLowerCase())
+      .join(' ');
+  }, []);
+
   // DATABASE MANAGER: Proper data fetching that can access ALL registrations with search and filtering
   const fetchAllRegistrations = useCallback(async () => {
     setLoading(true);
@@ -241,6 +196,209 @@ function DatabaseManager() {
     }
   }, [startDate, endDate]);
 
+  const normalizedRegistrations = useMemo(() => (
+    registrations.map((reg) => {
+      const form = reg.formData || {};
+      const firstName = form.firstName || '';
+      const lastName = form.lastName || '';
+      const idValue = form.id || reg.id || '';
+      return {
+        ...reg,
+        recordType: 'registration',
+        recordKey: `registration-${reg.id}`,
+        recordTimestamp: getTimestampValue(reg.submittedAt) || 0,
+        firstNameLower: firstName.toLowerCase(),
+        lastNameLower: lastName.toLowerCase(),
+        idLower: idValue.toLowerCase(),
+        searchIndex: buildSearchIndex(reg)
+      };
+    })
+  ), [registrations, buildSearchIndex, getTimestampValue]);
+
+  const normalizedCheckins = useMemo(() => {
+    if (!checkins || checkins.length === 0) {
+      return [];
+    }
+
+    return checkins.map((checkin) => {
+      const displayName = checkin.name || '';
+      const [fallbackFirst = '', ...restName] = displayName.split(' ').filter(Boolean);
+      const fallbackLast = restName.join(' ');
+
+      const compositeForm = {
+        ...checkin.formData,
+        firstName: checkin.formData?.firstName || fallbackFirst,
+        lastName: checkin.formData?.lastName || fallbackLast,
+        id: checkin.formData?.id || checkin.userId || checkin.id || '',
+        phone: checkin.formData?.phone || checkin.phone || '',
+        address: checkin.formData?.address || '',
+        apartment: checkin.formData?.apartment || '',
+        city: checkin.formData?.city || '',
+        state: checkin.formData?.state || '',
+        zip: checkin.formData?.zip || '',
+        dateOfBirth: checkin.formData?.dateOfBirth || '',
+        location: checkin.formData?.location || checkin.location || ''
+      };
+
+      return {
+        ...checkin,
+        formData: compositeForm,
+        recordType: 'checkin',
+        recordKey: `checkin-${checkin.id}`,
+        recordTimestamp: getTimestampValue(checkin.checkInTime || checkin.timestamp) || 0,
+        firstNameLower: (compositeForm.firstName || '').toLowerCase(),
+        lastNameLower: (compositeForm.lastName || '').toLowerCase(),
+        idLower: (compositeForm.id || '').toLowerCase(),
+        searchIndex: buildSearchIndex({ ...checkin, formData: compositeForm }),
+        household: checkin.household ?? checkin.formData?.household ?? ''
+      };
+    });
+  }, [checkins, buildSearchIndex, getTimestampValue]);
+
+  const combinedRecords = useMemo(() => {
+    if (recordScope === 'registrations') return normalizedRegistrations;
+    if (recordScope === 'checkins') return normalizedCheckins;
+    return [...normalizedRegistrations, ...normalizedCheckins];
+  }, [normalizedRegistrations, normalizedCheckins, recordScope]);
+
+  const specificDateRange = useMemo(() => {
+    if (!specificDate) return null;
+    const start = dayjs.tz(specificDate, APP_TIME_ZONE).startOf('day');
+    if (!start.isValid()) return null;
+    const end = start.endOf('day');
+    return {
+      startMillis: start.valueOf(),
+      endMillis: end.valueOf()
+    };
+  }, [specificDate]);
+
+  const startRangeMillis = useMemo(() => {
+    if (!startDate) return null;
+    const start = dayjs.tz(startDate, APP_TIME_ZONE).startOf('day');
+    return start.isValid() ? start.valueOf() : null;
+  }, [startDate]);
+
+  const endRangeMillis = useMemo(() => {
+    if (!endDate) return null;
+    const end = dayjs.tz(endDate, APP_TIME_ZONE).endOf('day');
+    return end.isValid() ? end.valueOf() : null;
+  }, [endDate]);
+
+  const filteredRegistrations = useMemo(() => {
+    const searchLower = debouncedSearchTerm.trim().toLowerCase();
+    const firstLower = firstNameFilter.trim().toLowerCase();
+    const lastLower = lastNameFilter.trim().toLowerCase();
+
+    return combinedRecords.filter((record) => {
+      const matchesFirst = !firstLower || (record.firstNameLower || '').includes(firstLower);
+      const matchesLast = !lastLower || (record.lastNameLower || '').includes(lastLower);
+      const matchesSearch = !searchLower || (record.searchIndex || '').includes(searchLower);
+      const timestamp = record.recordTimestamp ?? getTimestampValue(record.submittedAt);
+      const matchesStart = !startRangeMillis || (timestamp !== null && timestamp >= startRangeMillis);
+      const matchesEnd = !endRangeMillis || (timestamp !== null && timestamp <= endRangeMillis);
+      const matchesSpecific = !specificDateRange || (timestamp !== null && timestamp >= specificDateRange.startMillis && timestamp <= specificDateRange.endMillis);
+
+      return matchesFirst && matchesLast && matchesSearch && matchesStart && matchesEnd && matchesSpecific;
+    });
+  }, [combinedRecords, debouncedSearchTerm, firstNameFilter, lastNameFilter, startRangeMillis, endRangeMillis, specificDateRange, getTimestampValue]);
+
+  const sortedAndFilteredRegistrations = useMemo(() => {
+    const sorted = [...filteredRegistrations];
+    const direction = sortDirection === 'asc' ? 1 : -1;
+
+    const compareValues = (valueA, valueB) => {
+      if (valueA === valueB) return 0;
+      if (valueA === undefined || valueA === null) return direction;
+      if (valueB === undefined || valueB === null) return -direction;
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return direction * (valueA - valueB);
+      }
+      return direction * String(valueA).localeCompare(String(valueB), undefined, { sensitivity: 'base', numeric: true });
+    };
+
+    const getComparableValue = (record) => {
+      switch (sortField) {
+        case 'name':
+          return `${record.formData?.firstName || ''} ${record.formData?.lastName || ''}`.trim().toLowerCase();
+        case 'id':
+          return (record.formData?.id || record.userId || record.id || '').toLowerCase();
+        case 'dateOfBirth':
+          return (record.formData?.dateOfBirth || '').toLowerCase();
+        case 'phone':
+          return (record.formData?.phone || '').toLowerCase();
+        case 'address':
+          return `${record.formData?.address || ''} ${record.formData?.city || ''} ${record.formData?.state || ''} ${record.formData?.zip || ''}`.trim().toLowerCase();
+        default:
+          return record.recordTimestamp || 0;
+      }
+    };
+
+    sorted.sort((a, b) => {
+      const comparison = compareValues(getComparableValue(a), getComparableValue(b));
+      if (comparison !== 0) return comparison;
+      return compareValues(a.recordTimestamp || 0, b.recordTimestamp || 0);
+    });
+
+    return sorted;
+  }, [filteredRegistrations, sortField, sortDirection]);
+
+  const scopeLabels = useMemo(() => {
+    switch (recordScope) {
+      case 'checkins':
+        return {
+          singular: 'check-in',
+          plural: 'check-ins',
+          heading: 'Check-In History'
+        };
+      case 'both':
+        return {
+          singular: 'record',
+          plural: 'records',
+          heading: 'Registration & Check-In Records'
+        };
+      default:
+        return {
+          singular: 'registration',
+          plural: 'registrations',
+          heading: 'Registration Database'
+        };
+    }
+  }, [recordScope]);
+
+  const { plural: scopePlural, heading: scopeHeading } = scopeLabels;
+
+  const registrationLookup = useMemo(() => {
+    const map = new Map();
+    registrations.forEach((reg) => {
+      map.set(reg.id, reg);
+      const alternateId = reg.formData?.id;
+      if (alternateId) {
+        map.set(alternateId, reg);
+      }
+    });
+    return map;
+  }, [registrations]);
+
+  const resolveRegistrationForRecord = useCallback((record) => {
+    if (!record) return null;
+    if (record.recordType === 'registration') return record;
+
+    const potentialKeys = [
+      record.formData?.id,
+      record.userId,
+      record.registrationId,
+      record.formData?.registrationId
+    ].filter(Boolean);
+
+    for (const key of potentialKeys) {
+      if (registrationLookup.has(key)) {
+        return registrationLookup.get(key);
+      }
+    }
+
+    return null;
+  }, [registrationLookup]);
+
   // For Database Manager, use the filtered and sorted data with client-side pagination
   const displayData = sortedAndFilteredRegistrations;
 
@@ -249,13 +407,17 @@ function DatabaseManager() {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedData = displayData.slice(startIndex, endIndex);
-  const isAllCurrentPageSelected = paginatedData.length > 0 && paginatedData.every(reg => selectedRegistrations[reg.id]);
+  const registrationsOnCurrentPage = useMemo(
+    () => paginatedData.filter(record => record.recordType === 'registration'),
+    [paginatedData]
+  );
+  const isAllCurrentPageSelected = registrationsOnCurrentPage.length > 0 && registrationsOnCurrentPage.every(reg => selectedRegistrations[reg.id]);
 
   useEffect(() => {
     if (!selectAllCheckboxRef.current) return;
-    const someSelected = paginatedData.some(reg => selectedRegistrations[reg.id]);
+    const someSelected = registrationsOnCurrentPage.some(reg => selectedRegistrations[reg.id]);
     selectAllCheckboxRef.current.indeterminate = someSelected && !isAllCurrentPageSelected;
-  }, [paginatedData, selectedRegistrations, isAllCurrentPageSelected]);
+  }, [registrationsOnCurrentPage, selectedRegistrations, isAllCurrentPageSelected]);
 
   // Client-side pagination functions
   const goToNextPage = () => {
@@ -278,6 +440,7 @@ function DatabaseManager() {
 
   const previousShowArchived = useRef(showArchived);
   const selectAllCheckboxRef = useRef(null);
+  const checkinsListenerRef = useRef(null);
   useEffect(() => {
     if (previousShowArchived.current && !showArchived) {
       fetchAllRegistrations();
@@ -285,15 +448,70 @@ function DatabaseManager() {
     previousShowArchived.current = showArchived;
   }, [showArchived, fetchAllRegistrations]);
 
+  useEffect(() => {
+    if (recordScope === 'registrations') {
+      if (checkinsListenerRef.current) {
+        checkinsListenerRef.current();
+        checkinsListenerRef.current = null;
+      }
+      return;
+    }
+
+    setCheckinsLoading(true);
+    const checkinsQuery = query(
+      collection(db, 'checkins'),
+      orderBy('checkInTime', 'desc'),
+      limit(500)
+    );
+
+    const unsubscribe = onSnapshot(checkinsQuery, (snapshot) => {
+      const items = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setCheckins(items);
+      setCheckinsLoading(false);
+    }, (error) => {
+      console.error('Error fetching check-ins:', error);
+      setCheckinsLoading(false);
+    });
+
+    checkinsListenerRef.current = unsubscribe;
+
+    return () => {
+      if (checkinsListenerRef.current) {
+        checkinsListenerRef.current();
+        checkinsListenerRef.current = null;
+      }
+    };
+  }, [recordScope]);
+
+  useEffect(() => () => {
+    if (checkinsListenerRef.current) {
+      checkinsListenerRef.current();
+      checkinsListenerRef.current = null;
+    }
+  }, []);
+
   // Reset to first page when search/filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, firstNameFilter, lastNameFilter]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [recordScope, specificDate]);
+
   // Reset to first page when page size changes
   useEffect(() => {
     setCurrentPage(1);
   }, [pageSize]);
+
+  useEffect(() => {
+    if (recordScope !== 'registrations') {
+      setSelectedRegistrations({});
+    }
+  }, [recordScope]);
 
   // Real-time listener for registrations - OPTIMIZED with limits and date filtering
   useEffect(() => {
@@ -343,7 +561,9 @@ function DatabaseManager() {
   }, [showArchived]); // Re-run when archive filter changes
 
 
-  const toggleSelectRegistration = (regId) => {
+  const toggleSelectRegistration = (record) => {
+    if (!record || record.recordType !== 'registration') return;
+    const regId = record.id;
     setSelectedRegistrations(prev => {
       const updated = { ...prev };
       if (updated[regId]) {
@@ -358,7 +578,7 @@ function DatabaseManager() {
   const handleSelectAllCurrentPage = (checked) => {
     setSelectedRegistrations(prev => {
       const updated = { ...prev };
-      paginatedData.forEach(reg => {
+      registrationsOnCurrentPage.forEach(reg => {
         if (checked) {
           updated[reg.id] = true;
         } else {
@@ -376,6 +596,48 @@ function DatabaseManager() {
   const handleBatchFieldReset = () => {
     setBatchTefapDate('');
     setBatchLocation('');
+  };
+
+  const summarizeHousehold = (value) => {
+    if (!value) return '—';
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return '—';
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map(entry => (entry && entry.value) ? entry.value : '')
+              .filter(Boolean)
+              .join(', ') || '—';
+          }
+        } catch (error) {
+          // fall through to returning trimmed value
+        }
+      }
+      return trimmed;
+    }
+
+    if (Array.isArray(value)) {
+      return value
+        .map(entry => {
+          if (!entry) return '';
+          if (typeof entry === 'string') return entry;
+          return entry.value || '';
+        })
+        .filter(Boolean)
+        .join(', ') || '—';
+    }
+
+    if (typeof value === 'object') {
+      return Object.values(value)
+        .filter(val => typeof val === 'string' && val.trim())
+        .join(', ') || '—';
+    }
+
+    return '—';
   };
 
   // Applies TEFAP date and/or site updates to selected registrations.
@@ -1247,6 +1509,56 @@ function DatabaseManager() {
           {!showArchived && (
             <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", alignItems: "center", flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <label style={{ fontWeight: "bold", minWidth: "60px" }}>Records:</label>
+                <select
+                  value={recordScope}
+                  onChange={e => setRecordScope(e.target.value)}
+                  style={{ padding: "6px 12px", minWidth: "150px" }}
+                >
+                  <option value="registrations">Registrations</option>
+                  <option value="checkins">Check-Ins</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <label style={{ fontWeight: "bold", minWidth: "80px" }}>Specific Day:</label>
+                <input
+                  type="date"
+                  value={specificDate}
+                  onChange={e => setSpecificDate(e.target.value)}
+                  style={{ padding: "6px 12px" }}
+                />
+                {specificDate && (
+                  <button
+                    onClick={() => setSpecificDate('')}
+                    style={{
+                      padding: "6px 12px",
+                      backgroundColor: "#6c757d",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "14px"
+                    }}
+                  >
+                    Clear Day Filter
+                  </button>
+                )}
+              </div>
+
+              {recordScope !== 'registrations' && checkinsLoading && (
+                <div style={{ color: "#1976d2", fontStyle: "italic" }}>
+                  Loading check-ins...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Search and Sort Controls */}
+          {!showArchived && (
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <label style={{ fontWeight: "bold", minWidth: "60px" }}>Search:</label>
                 <input
                   type="text"
@@ -1349,7 +1661,7 @@ function DatabaseManager() {
         </div>
 
           {/* Dedicated Search Results Section */}
-          {searchTerm && !showArchived && (
+          {searchTerm && !showArchived && recordScope === 'registrations' && (
             <div style={{
               backgroundColor: "#f8f9fa",
               border: "2px solid #2196F3",
@@ -1381,7 +1693,7 @@ function DatabaseManager() {
                   fontWeight: "bold",
                   color: "#2196F3"
                 }}>
-                  {filteredRegistrations.length} result{filteredRegistrations.length !== 1 ? 's' : ''} found
+                  {filteredRegistrations.length} {scopePlural} found
                 </div>
               </div>
 
@@ -1392,7 +1704,7 @@ function DatabaseManager() {
                   color: "#666"
                 }}>
                   <p style={{ fontSize: "18px", marginBottom: "1rem" }}>
-                    No registrations found matching "{searchTerm}"
+                    No {scopePlural} found matching "{searchTerm}"
                   </p>
                   <button
                     onClick={() => setSearchTerm('')}
@@ -1439,7 +1751,7 @@ function DatabaseManager() {
                     </thead>
                     <tbody>
                       {paginatedData.map((reg, index) => (
-                        <tr key={reg.id} style={{
+                        <tr key={reg.recordKey || reg.id} style={{
                           backgroundColor: index % 2 === 0 ? "#f9f9f9" : "white",
                           borderBottom: "1px solid #eee"
                         }}>
@@ -1620,7 +1932,7 @@ function DatabaseManager() {
                     textAlign: 'center',
                     wordBreak: 'break-word'
                   }}>
-                    Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} records (Page {currentPage} of {totalPages}) ({pageSize} per page)
+                    Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} {scopePlural} (Page {currentPage} of {totalPages}) ({pageSize} per page)
                   </span>
                 </div>
               )}
@@ -1645,7 +1957,7 @@ function DatabaseManager() {
                 color: "#666",
                 fontStyle: "italic"
               }}>
-                in Registration Database
+                in {scopeHeading}
               </div>
             </div>
           ) : (
@@ -1653,13 +1965,13 @@ function DatabaseManager() {
               {showArchived ? (
                 <h2 className="admin-heading" style={{ textAlign: "center" }}>Live Registration</h2>
               ) : (
-                <h2 className="admin-heading" style={{ textAlign: "center" }}>Registration Database</h2>
+                <h2 className="admin-heading" style={{ textAlign: "center" }}>{scopeHeading}</h2>
               )}
             </>
           )}
 
           {/* Conditionally render the export button */}
-          {!showArchived && (
+          {!showArchived && recordScope === 'registrations' && (
             <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
               <button onClick={exportRegistrations}>Export Registrations (CSV)</button>
             </div>
@@ -1680,7 +1992,7 @@ function DatabaseManager() {
               {searchTerm ? (
                 <div>
                   <div style={{ marginBottom: "4px" }}>
-                    📊 Found {filteredRegistrations.length} registration{filteredRegistrations.length !== 1 ? 's' : ''} matching your search
+                    📊 Found {filteredRegistrations.length} {scopePlural} matching your search
                   </div>
                   <div style={{ fontSize: "14px", fontWeight: "normal", color: "#666" }}>
                     Search terms: "{searchTerm}"
@@ -1690,7 +2002,7 @@ function DatabaseManager() {
                 </div>
               ) : (
                 <div>
-                  Showing {filteredRegistrations.length} registration{filteredRegistrations.length !== 1 ? 's' : ''}
+                  Showing {filteredRegistrations.length} {scopePlural}
                   {sortField !== 'submittedAt' && ` sorted by ${sortField} (${sortDirection}ending)`}
                   {(firstNameFilter || lastNameFilter || startDate || endDate) && " (filtered)"}
                 </div>
@@ -1710,7 +2022,7 @@ function DatabaseManager() {
             }}>
               <h3 style={{ color: "#856404", marginBottom: "1rem" }}>No Results Found</h3>
               <p style={{ color: "#856404", marginBottom: "1rem" }}>
-                No registrations found matching your search for "<strong>{searchTerm}</strong>".
+                No {scopePlural} found matching your search for "<strong>{searchTerm}</strong>".
               </p>
               <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
                 <button
@@ -1774,11 +2086,11 @@ function DatabaseManager() {
               borderRadius: "8px",
               color: "#666"
             }}>
-              <h3>No Records Found</h3>
+              <h3>No {scopePlural.charAt(0).toUpperCase() + scopePlural.slice(1)} Found</h3>
               <p>
                 {showArchived 
                   ? "No archived registrations found." 
-                  : "No active registrations found."}
+                  : `No ${scopePlural} found.`}
               </p>
               <p>Try switching to {showArchived ? "Active" : "Archived"} records or adjusting your filters.</p>
             </div>
@@ -1871,10 +2183,11 @@ function DatabaseManager() {
                 textAlign: 'center',
                 wordBreak: 'break-word'
               }}>
-                Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} records ({pageSize} per page)
+                Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} {scopePlural} ({pageSize} per page)
               </span>
             </div>
             
+            {recordScope === 'registrations' && (
             <div
               style={{
                 display: 'flex',
@@ -1971,6 +2284,7 @@ function DatabaseManager() {
                 Clear selection
               </button>
             </div>
+            )}
             
             <table className="admin-table">
             <thead>
@@ -1981,8 +2295,11 @@ function DatabaseManager() {
                     type="checkbox"
                     checked={isAllCurrentPageSelected}
                     onChange={(e) => handleSelectAllCurrentPage(e.target.checked)}
+                    disabled={registrationsOnCurrentPage.length === 0}
+                    title={registrationsOnCurrentPage.length === 0 ? 'No registrations on this page to select' : undefined}
                   />
                 </th>
+                <th>Type</th>
                 <th 
                   onClick={() => {
                     if (sortField === 'name') {
@@ -2061,300 +2378,359 @@ function DatabaseManager() {
               </tr>
             </thead>
             <tbody>
-              {paginatedData.map(reg => (
-                <tr 
-                  key={reg.id}
-                  style={selectedRegistrations[reg.id] ? { backgroundColor: '#f1f8ff' } : undefined}
-                >
-                  <td className="selection-cell" data-label="Select" style={{ textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
-                      checked={!!selectedRegistrations[reg.id]}
-                      onChange={() => toggleSelectRegistration(reg.id)}
-                    />
-                  </td>
-                  <td className="name-cell" data-label="Name">
-                    <span className="name-primary">
-                      {reg.formData?.firstName} {reg.formData?.lastName}
-                    </span>
-                  </td>
-                  <td data-label="ID">
-                    <input
-                      value={editedIds[reg.id] !== undefined ? editedIds[reg.id] : reg.formData?.id || ""}
-                      onChange={e => handleIdChange(reg.id, e.target.value)}
-                      style={{ width: "100px" }}
-                    />
-                  </td>
-                  <td data-label="Date of Birth">{reg.formData?.dateOfBirth}</td>
-                  <td data-label="Phone">{reg.formData?.phone}</td>
-                  <td data-label="Address">{reg.formData?.address}</td>
-                  <td data-label="APT #">{reg.formData?.apartment || ''}</td>
-                  <td data-label="Picking up for">
-                    <div style={{ position: 'relative' }}>
-                      {!householdEditorOpen[reg.id] ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <input
-                            value={(() => {
-                              const edited = editedHouseholds[reg.id];
-                              if (Array.isArray(edited)) {
-                                const validEntries = edited.filter(e => e.value && e.value.trim());
-                                return validEntries.length > 0 
-                                  ? `${validEntries.length} entries` 
-                                  : '';
-                              }
-                              return edited !== undefined ? edited : reg.formData?.household || "";
-                            })()}
-                            onChange={e => handleHouseholdChange(reg.id, e.target.value)}
-                            style={{ width: "80px", fontSize: "12px" }}
-                            placeholder="Click +"
-                            readOnly={Array.isArray(editedHouseholds[reg.id])}
-                          />
-                          <button 
-                            onClick={() => {
-                              initializeHouseholdData(reg.id, reg.formData?.household);
-                              toggleHouseholdEditor(reg.id);
-                            }}
-                            style={{ 
-                              padding: '2px 6px', 
-                              fontSize: '12px',
-                              backgroundColor: '#4CAF50',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '3px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            +
-                          </button>
+              {paginatedData.map((reg) => {
+                const isRegistration = reg.recordType !== 'checkin';
+                const isSelected = !!selectedRegistrations[reg.id];
+                const linkedRegistration = resolveRegistrationForRecord(reg);
+                const timestamp = reg.recordType === 'checkin'
+                  ? reg.checkInTime || reg.recordTimestamp || getTimestampValue(reg.submittedAt)
+                  : reg.recordTimestamp || getTimestampValue(reg.submittedAt);
+                const formattedTimestamp = timestamp ? formatDateTimeDisplay(timestamp, '') : '';
+                const typeLabel = isRegistration ? 'Registration' : 'Check-In';
+                const nameDisplay = `${reg.formData?.firstName || ''} ${reg.formData?.lastName || ''}`.trim() || reg.name || '—';
+                const locationDisplay = reg.formData?.location || reg.location || '—';
+                const statusDisplay = reg.status || 'waiting';
+                const householdSummary = summarizeHousehold(reg.household || reg.formData?.household);
+                const rowKey = reg.recordKey || reg.id;
+                const rowBackground = isSelected ? '#f1f8ff' : !isRegistration ? '#fff8e1' : undefined;
+
+                return (
+                  <tr
+                    key={rowKey}
+                    style={rowBackground ? { backgroundColor: rowBackground } : undefined}
+                  >
+                    <td className="selection-cell" data-label="Select" style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectRegistration(reg)}
+                        disabled={!isRegistration}
+                        title={!isRegistration ? 'Selection available for registrations only' : undefined}
+                      />
+                    </td>
+                    <td data-label="Type">
+                      <div style={{ fontWeight: 600 }}>{typeLabel}</div>
+                      {formattedTimestamp && (
+                        <div style={{ fontSize: '11px', color: '#546e7a' }}>
+                          {isRegistration ? `Submitted ${formattedTimestamp}` : `Checked in ${formattedTimestamp}`}
                         </div>
+                      )}
+                      {!isRegistration && (
+                        <div style={{ fontSize: '11px', color: '#546e7a' }}>
+                          Status: {statusDisplay}
+                        </div>
+                      )}
+                    </td>
+                    <td className="name-cell" data-label="Name">
+                      <span className="name-primary">{nameDisplay}</span>
+                      {!isRegistration && (
+                        <div style={{ fontSize: '12px', color: '#455a64' }}>Location: {locationDisplay}</div>
+                      )}
+                    </td>
+                    <td data-label="ID">
+                      {isRegistration ? (
+                        <input
+                          value={editedIds[reg.id] !== undefined ? editedIds[reg.id] : reg.formData?.id || ''}
+                          onChange={e => handleIdChange(reg.id, e.target.value)}
+                          style={{ width: '100px' }}
+                        />
                       ) : (
-                        <>
-                          <div 
-                            style={{
-                              position: 'fixed',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              backgroundColor: 'rgba(0,0,0,0.3)',
-                              zIndex: 9998
-                            }}
-                            onClick={() => toggleHouseholdEditor(reg.id)}
-                          />
-                          <div style={{ 
-                            position: 'fixed',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            zIndex: 9999,
-                            backgroundColor: 'white',
-                            border: '2px solid #ccc',
-                            borderRadius: '5px',
-                            padding: '15px',
-                            minWidth: '400px',
-                            maxWidth: '500px',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                            maxHeight: '80vh',
-                            overflowY: 'auto'
-                          }}>
-                          <div style={{ marginBottom: '10px', fontWeight: 'bold', fontSize: '14px' }}>
-                            Picking up for:
-                          </div>
-                          {[...Array(6)].map((_, index) => {
-                            const entry = editedHouseholds[reg.id]?.[index] || { type: '', value: '' };
-                            const searchKey = `${reg.id}-${index}`;
-                            const currentResults = searchResults[searchKey] || [];
-                            
-                            return (
-                              <div key={index} style={{ marginBottom: '8px', display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                <select
-                                  value={entry.type}
-                                  onChange={(e) => updateHouseholdEntry(reg.id, index, 'type', e.target.value)}
-                                  style={{ width: '80px', fontSize: '12px' }}
-                                >
-                                  <option value="">Select</option>
-                                  <option value="registration">Reg ID</option>
-                                  <option value="other">Other</option>
-                                </select>
-                                <div style={{ position: 'relative', flex: 1 }}>
-                                  <input
-                                    type="text"
-                                    value={entry.value}
-                                    onChange={(e) => {
-                                      updateHouseholdEntry(reg.id, index, 'value', e.target.value);
-                                      if (entry.type === 'registration') {
-                                        handleRegistrationSearch(reg.id, index, e.target.value);
-                                      }
-                                    }}
-                                    placeholder={entry.type === 'registration' ? 'Enter Reg ID' : 'Enter name/description'}
-                                    style={{ width: '100%', fontSize: '12px' }}
-                                  />
-                                  {entry.type === 'registration' && currentResults.length > 0 && (
-                                    <div style={{
-                                      position: 'absolute',
-                                      top: '100%',
-                                      left: 0,
-                                      right: 0,
-                                      backgroundColor: 'white',
-                                      border: '1px solid #ccc',
-                                      borderRadius: '3px',
-                                      maxHeight: '120px',
-                                      overflowY: 'auto',
-                                      zIndex: 1001
-                                    }}>
-                                      {currentResults.map((result, resultIndex) => (
-                                        <div
-                                          key={resultIndex}
-                                          onClick={() => {
-                                            updateHouseholdEntry(reg.id, index, 'value', result.registrationId);
-                                            setSearchResults(prev => ({ ...prev, [searchKey]: [] }));
-                                          }}
-                                          style={{
-                                            padding: '5px',
-                                            cursor: 'pointer',
-                                            borderBottom: resultIndex < currentResults.length - 1 ? '1px solid #eee' : 'none',
-                                            fontSize: '12px',
-                                            backgroundColor: 'white'
-                                          }}
-                                          onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
-                                          onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                                        >
-                                          <div><strong>{result.registrationId}</strong></div>
-                                          <div style={{ color: '#666' }}>{result.name}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
+                        <span>{reg.formData?.id || reg.userId || reg.id || '—'}</span>
+                      )}
+                    </td>
+                    <td data-label="Date of Birth">{reg.formData?.dateOfBirth || '—'}</td>
+                    <td data-label="Phone">{reg.formData?.phone || '—'}</td>
+                    <td data-label="Address">{reg.formData?.address || '—'}</td>
+                    <td data-label="APT #">{reg.formData?.apartment || ''}</td>
+                    <td data-label="Picking up for">
+                      {isRegistration ? (
+                        <div style={{ position: 'relative' }}>
+                          {!householdEditorOpen[reg.id] ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <input
+                                value={(() => {
+                                  const edited = editedHouseholds[reg.id];
+                                  if (Array.isArray(edited)) {
+                                    const validEntries = edited.filter(e => e.value && e.value.trim());
+                                    return validEntries.length > 0 ? `${validEntries.length} entries` : '';
+                                  }
+                                  return edited !== undefined ? edited : reg.formData?.household || '';
+                                })()}
+                                onChange={e => handleHouseholdChange(reg.id, e.target.value)}
+                                style={{ width: '80px', fontSize: '12px' }}
+                                placeholder="Click +"
+                                readOnly={Array.isArray(editedHouseholds[reg.id])}
+                              />
+                              <button
+                                onClick={() => {
+                                  initializeHouseholdData(reg.id, reg.formData?.household);
+                                  toggleHouseholdEditor(reg.id);
+                                }}
+                                style={{
+                                  padding: '2px 6px',
+                                  fontSize: '12px',
+                                  backgroundColor: '#4CAF50',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div
+                                style={{
+                                  position: 'fixed',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  backgroundColor: 'rgba(0,0,0,0.3)',
+                                  zIndex: 9998
+                                }}
+                                onClick={() => toggleHouseholdEditor(reg.id)}
+                              />
+                              <div style={{
+                                position: 'fixed',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 9999,
+                                backgroundColor: 'white',
+                                border: '2px solid #ccc',
+                                borderRadius: '5px',
+                                padding: '15px',
+                                minWidth: '400px',
+                                maxWidth: '500px',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                                maxHeight: '80vh',
+                                overflowY: 'auto'
+                              }}>
+                                <div style={{ marginBottom: '10px', fontWeight: 'bold', fontSize: '14px' }}>
+                                  Picking up for:
                                 </div>
-                                {entry.value && (
+                                {[...Array(6)].map((_, index) => {
+                                  const entry = editedHouseholds[reg.id]?.[index] || { type: '', value: '' };
+                                  const searchKey = `${reg.id}-${index}`;
+                                  const currentResults = searchResults[searchKey] || [];
+
+                                  return (
+                                    <div key={index} style={{ marginBottom: '8px', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                      <select
+                                        value={entry.type}
+                                        onChange={(e) => updateHouseholdEntry(reg.id, index, 'type', e.target.value)}
+                                        style={{ width: '80px', fontSize: '12px' }}
+                                      >
+                                        <option value="">Select</option>
+                                        <option value="registration">Reg ID</option>
+                                        <option value="other">Other</option>
+                                      </select>
+                                      <div style={{ position: 'relative', flex: 1 }}>
+                                        <input
+                                          type="text"
+                                          value={entry.value}
+                                          onChange={(e) => {
+                                            updateHouseholdEntry(reg.id, index, 'value', e.target.value);
+                                            if (entry.type === 'registration') {
+                                              handleRegistrationSearch(reg.id, index, e.target.value);
+                                            }
+                                          }}
+                                          placeholder={entry.type === 'registration' ? 'Enter Reg ID' : 'Enter name/description'}
+                                          style={{ width: '100%', fontSize: '12px' }}
+                                        />
+                                        {entry.type === 'registration' && currentResults.length > 0 && (
+                                          <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            right: 0,
+                                            backgroundColor: 'white',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '3px',
+                                            maxHeight: '120px',
+                                            overflowY: 'auto',
+                                            zIndex: 1001
+                                          }}>
+                                            {currentResults.map((result, resultIndex) => (
+                                              <div
+                                                key={resultIndex}
+                                                onClick={() => {
+                                                  updateHouseholdEntry(reg.id, index, 'value', result.registrationId);
+                                                  setSearchResults(prev => ({ ...prev, [searchKey]: [] }));
+                                                }}
+                                                style={{
+                                                  padding: '5px',
+                                                  cursor: 'pointer',
+                                                  borderBottom: resultIndex < currentResults.length - 1 ? '1px solid #eee' : 'none',
+                                                  fontSize: '12px',
+                                                  backgroundColor: 'white'
+                                                }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
+                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
+                                              >
+                                                <div><strong>{result.registrationId}</strong></div>
+                                                <div style={{ color: '#666' }}>{result.name}</div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {entry.value && (
+                                        <button
+                                          onClick={() => updateHouseholdEntry(reg.id, index, 'value', '')}
+                                          style={{
+                                            padding: '2px 5px',
+                                            fontSize: '10px',
+                                            backgroundColor: '#f44336',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '2px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ×
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
                                   <button
-                                    onClick={() => updateHouseholdEntry(reg.id, index, 'value', '')}
+                                    onClick={() => toggleHouseholdEditor(reg.id)}
                                     style={{
-                                      padding: '2px 5px',
-                                      fontSize: '10px',
-                                      backgroundColor: '#f44336',
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      backgroundColor: '#2196F3',
                                       color: 'white',
                                       border: 'none',
-                                      borderRadius: '2px',
+                                      borderRadius: '3px',
                                       cursor: 'pointer'
                                     }}
                                   >
-                                    ×
+                                    Done
                                   </button>
-                                )}
+                                  <button
+                                    onClick={() => {
+                                      setEditedHouseholds(prev => ({ ...prev, [reg.id]: undefined }));
+                                      toggleHouseholdEditor(reg.id);
+                                    }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      backgroundColor: '#757575',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '3px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
-                            );
-                          })}
-                          <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
-                            <button
-                              onClick={() => toggleHouseholdEditor(reg.id)}
-                              style={{
-                                padding: '5px 10px',
-                                fontSize: '12px',
-                                backgroundColor: '#2196F3',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Done
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditedHouseholds(prev => ({ ...prev, [reg.id]: undefined }));
-                                toggleHouseholdEditor(reg.id);
-                              }}
-                              style={{
-                                padding: '5px 10px',
-                                fontSize: '12px',
-                                backgroundColor: '#757575',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                            </>
+                          )}
                         </div>
-                        </>
+                      ) : (
+                        <div style={{ fontSize: '12px', color: '#455a64' }}>{householdSummary}</div>
                       )}
-                    </div>
-                  </td>
-                  <td data-label="TEFAP">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '120px' }}>
-                      <input
-                        type="date"
-                        value={editedTefap[reg.id]?.date || reg.formData?.tefapDate || ''}
-                        onChange={e => handleTefapChange(reg.id, 'date', e.target.value)}
-                        style={{ 
-                          fontSize: '12px', 
-                          width: '100%', 
-                          backgroundColor: '#fffacd',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          padding: '4px'
-                        }}
-                        placeholder="Date"
-                      />
-                    </div>
-                  </td>
-                  <td data-label="Site">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <select
-                        value={editedLocations[reg.id] !== undefined ? editedLocations[reg.id] : (reg.formData?.location || '')}
-                        onChange={(e) => handleLocationChange(reg.id, e.target.value)}
-                        style={{
-                          padding: "4px 8px",
-                          border: "1px solid #ccc",
-                          borderRadius: "3px",
-                          fontSize: "12px",
-                          backgroundColor: "white",
-                          width: "90px"
-                        }}
-                      >
-                        <option value="">Select</option>
-                        <option value="Plano">Plano</option>
-                        <option value="Dallas">Dallas</option>
-                        <option value="Both">Both</option>
-                      </select>
-                      <button
-                        onClick={() => saveLocation(reg.id, reg.formData?.id || reg.id, reg.formData?.location)}
-                        style={{
-                          padding: "2px 6px",
-                          backgroundColor: "#2196F3",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "2px",
-                          cursor: "pointer",
-                          fontSize: "10px"
-                        }}
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </td>
-                  <td data-label="Actions">
-                    <div className="action-buttons">
-                      <button onClick={() => viewRegistrationForm(reg)}>View Form</button>
-                      <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
-                      <button onClick={() => saveHousehold(reg.id, reg.formData?.id, editedHouseholds[reg.id] ?? reg.formData?.household)}>
-                        Save Picking up for
-                      </button>
-                      <button onClick={() => saveTefap(reg.id)}>Save TEFAP</button>
-                      <button 
-                        onClick={() => deleteRegistration(reg.id, `${reg.formData?.firstName} ${reg.formData?.lastName}`)}
-                        className="delete-button"
-                        style={{ backgroundColor: '#f44336', color: 'white' }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td data-label="TEFAP">
+                      {isRegistration ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '120px' }}>
+                          <input
+                            type="date"
+                            value={editedTefap[reg.id]?.date || reg.formData?.tefapDate || ''}
+                            onChange={e => handleTefapChange(reg.id, 'date', e.target.value)}
+                            style={{
+                              fontSize: '12px',
+                              width: '100%',
+                              backgroundColor: '#fffacd',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                              padding: '4px'
+                            }}
+                            placeholder="Date"
+                          />
+                        </div>
+                      ) : (
+                        <span>{reg.formData?.tefapDate || '—'}</span>
+                      )}
+                    </td>
+                    <td data-label="Site">
+                      {isRegistration ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <select
+                            value={editedLocations[reg.id] !== undefined ? editedLocations[reg.id] : (reg.formData?.location || '')}
+                            onChange={(e) => handleLocationChange(reg.id, e.target.value)}
+                            style={{
+                              padding: '4px 8px',
+                              border: '1px solid #ccc',
+                              borderRadius: '3px',
+                              fontSize: '12px',
+                              backgroundColor: 'white',
+                              width: '90px'
+                            }}
+                          >
+                            <option value="">Select</option>
+                            <option value="Plano">Plano</option>
+                            <option value="Dallas">Dallas</option>
+                            <option value="Both">Both</option>
+                          </select>
+                          <button
+                            onClick={() => saveLocation(reg.id, reg.formData?.id || reg.id, reg.formData?.location)}
+                            style={{
+                              padding: '2px 6px',
+                              backgroundColor: '#2196F3',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                              fontSize: '10px'
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      ) : (
+                        <span>{locationDisplay}</span>
+                      )}
+                    </td>
+                    <td data-label="Actions">
+                      {isRegistration ? (
+                        <div className="action-buttons">
+                          <button onClick={() => viewRegistrationForm(reg)}>View Form</button>
+                          <button onClick={() => saveId(reg.id, reg.formData?.id)}>Save ID</button>
+                          <button onClick={() => saveHousehold(reg.id, reg.formData?.id, editedHouseholds[reg.id] ?? reg.formData?.household)}>
+                            Save Picking up for
+                          </button>
+                          <button onClick={() => saveTefap(reg.id)}>Save TEFAP</button>
+                          <button
+                            onClick={() => deleteRegistration(reg.id, `${reg.formData?.firstName} ${reg.formData?.lastName}`)}
+                            className="delete-button"
+                            style={{ backgroundColor: '#f44336', color: 'white' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="action-buttons">
+                          {linkedRegistration ? (
+                            <button onClick={() => viewRegistrationForm(linkedRegistration)}>
+                              View Registration
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#757575' }}>Registration not found</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           
@@ -2440,7 +2816,7 @@ function DatabaseManager() {
               textAlign: 'center',
               wordBreak: 'break-word'
             }}>
-              Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} records ({pageSize} per page)
+              Showing {startIndex + 1}-{Math.min(endIndex, displayData.length)} of {displayData.length} {scopePlural} ({pageSize} per page)
             </span>
           </div>
           
