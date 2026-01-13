@@ -268,6 +268,9 @@ function AdminViewer() {
   const [loading, setLoading] = useState(true);
   const [editedIds, setEditedIds] = useState({});
   const [editedHouseholds, setEditedHouseholds] = useState({});
+  const [queueEditedHouseholds, setQueueEditedHouseholds] = useState({});
+  const [queueHouseholdEditorOpen, setQueueHouseholdEditorOpen] = useState({});
+  const [queueSearchResults, setQueueSearchResults] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
   const [queueStatusFilter, setQueueStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("both");
@@ -377,6 +380,91 @@ function AdminViewer() {
     setEditedHouseholds(prev => ({ ...prev, [docId]: value }));
   };
 
+  const buildHouseholdEditorEntries = (currentHousehold) => {
+    let householdData = [];
+
+    if (Array.isArray(currentHousehold)) {
+      householdData = currentHousehold.map(entry => ({
+        type: entry?.type || '',
+        value: entry?.value || ''
+      }));
+    } else if (currentHousehold) {
+      try {
+        if (typeof currentHousehold === 'string') {
+          const trimmed = currentHousehold.trim();
+          if (trimmed.startsWith('[')) {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              householdData = parsed.map(entry => ({
+                type: entry?.type || '',
+                value: entry?.value || ''
+              }));
+            }
+          } else {
+            householdData = [{ type: 'other', value: currentHousehold }];
+          }
+        } else {
+          householdData = [{ type: 'other', value: String(currentHousehold) }];
+        }
+      } catch (error) {
+        householdData = [{ type: 'other', value: typeof currentHousehold === 'string' ? currentHousehold : '' }];
+      }
+    }
+
+    while (householdData.length < 6) {
+      householdData.push({ type: '', value: '' });
+    }
+
+    return householdData;
+  };
+
+  const renderHouseholdChips = (rawValue) => {
+    const buildChip = (entry, index) => (
+      <div
+        key={index}
+        style={{
+          marginBottom: '2px',
+          padding: '1px 3px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '2px',
+          fontSize: '11px'
+        }}
+      >
+        <span style={{ fontWeight: 'bold', color: entry.type === 'registration' ? '#2196F3' : '#FF9800' }}>
+          {entry.type === 'registration' ? 'ID:' : 'Other:'}
+        </span> {entry.value}
+      </div>
+    );
+
+    if (!rawValue) {
+      return '';
+    }
+
+    if (Array.isArray(rawValue)) {
+      const validEntries = rawValue.filter(entry => entry?.value && entry.value.trim());
+      return validEntries.length ? validEntries.map(buildChip) : '';
+    }
+
+    if (typeof rawValue === 'string') {
+      const trimmed = rawValue.trim();
+      if (!trimmed) return '';
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            const validEntries = parsed.filter(entry => entry?.value && entry.value.trim());
+            return validEntries.length ? validEntries.map(buildChip) : '';
+          }
+        } catch (error) {
+          // Ignore parse errors and fall back to raw string
+        }
+      }
+      return trimmed;
+    }
+
+    return '';
+  };
+
   // Enhanced household management functions
   const toggleHouseholdEditor = (regId) => {
     setHouseholdEditorOpen(prev => ({ ...prev, [regId]: !prev[regId] }));
@@ -384,26 +472,7 @@ function AdminViewer() {
 
   const initializeHouseholdData = (regId, currentHousehold) => {
     if (!editedHouseholds[regId]) {
-      let householdData = [];
-      try {
-        // Try to parse existing household data if it's JSON
-        if (currentHousehold && typeof currentHousehold === 'string' && currentHousehold.startsWith('[')) {
-          householdData = JSON.parse(currentHousehold);
-        } else if (currentHousehold) {
-          // Convert simple string to array format
-          householdData = [{ type: 'other', value: currentHousehold }];
-        }
-      } catch (e) {
-        // If parsing fails, treat as simple string
-        householdData = currentHousehold ? [{ type: 'other', value: currentHousehold }] : [];
-      }
-      
-      // Ensure we have 6 slots
-      while (householdData.length < 6) {
-        householdData.push({ type: '', value: '' });
-      }
-      
-      setEditedHouseholds(prev => ({ ...prev, [regId]: householdData }));
+      setEditedHouseholds(prev => ({ ...prev, [regId]: buildHouseholdEditorEntries(currentHousehold) }));
     }
   };
 
@@ -413,6 +482,28 @@ function AdminViewer() {
       if (!updated[index]) updated[index] = { type: '', value: '' };
       updated[index] = { ...updated[index], [field]: value };
       return { ...prev, [regId]: updated };
+    });
+  };
+
+  const toggleQueueHouseholdEditor = (checkinId) => {
+    setQueueHouseholdEditorOpen(prev => ({ ...prev, [checkinId]: !prev[checkinId] }));
+  };
+
+  const initializeQueueHouseholdData = (checkinId, currentHousehold) => {
+    if (!queueEditedHouseholds[checkinId]) {
+      setQueueEditedHouseholds(prev => ({
+        ...prev,
+        [checkinId]: buildHouseholdEditorEntries(currentHousehold)
+      }));
+    }
+  };
+
+  const updateQueueHouseholdEntry = (checkinId, index, field, value) => {
+    setQueueEditedHouseholds(prev => {
+      const updated = [...(prev[checkinId] || [])];
+      if (!updated[index]) updated[index] = { type: '', value: '' };
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, [checkinId]: updated };
     });
   };
 
@@ -544,6 +635,21 @@ function AdminViewer() {
       setSearchResults(prev => ({ 
         ...prev, 
         [`${regId}-${index}`]: [] 
+      }));
+    }
+  };
+
+  const handleQueueRegistrationSearch = async (checkinId, index, searchId) => {
+    if (searchId.length >= 2) {
+      const results = await searchRegistrationById(searchId);
+      setQueueSearchResults(prev => ({
+        ...prev,
+        [`${checkinId}-${index}`]: results
+      }));
+    } else {
+      setQueueSearchResults(prev => ({
+        ...prev,
+        [`${checkinId}-${index}`]: []
       }));
     }
   };
@@ -682,6 +788,67 @@ function AdminViewer() {
 
     setSaveMessage("Picking up for saved successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
+  };
+
+  const saveQueueHousehold = async (checkin) => {
+    if (!checkin?.id) return;
+
+    const editedData = queueEditedHouseholds[checkin.id];
+    let newValue;
+
+    if (editedData && Array.isArray(editedData)) {
+      const validEntries = editedData.filter(entry => entry.value && entry.value.trim());
+      newValue = JSON.stringify(validEntries);
+    } else {
+      const fallback = editedData !== undefined ? editedData : (checkin.household ?? checkin.formData?.household ?? "");
+      newValue = fallback;
+    }
+
+    const checkinUpdate = { household: newValue };
+    if (checkin.formData) {
+      checkinUpdate.formData = {
+        ...checkin.formData,
+        household: newValue
+      };
+    }
+
+    try {
+      await updateDoc(doc(db, "checkins", checkin.id), checkinUpdate);
+
+      const candidateIds = [checkin.userId, checkin.formData?.id].filter(Boolean);
+      const linkedRegistration = registrations.find(reg =>
+        candidateIds.some(candidate => candidate === reg.id || candidate === reg.formData?.id)
+      );
+
+      if (linkedRegistration) {
+        await updateDoc(doc(db, "registrations", linkedRegistration.id), {
+          "formData.household": newValue
+        });
+      }
+
+      setSaveMessage("Picking up for saved successfully!");
+      setTimeout(() => setSaveMessage(""), 3000);
+
+      setQueueHouseholdEditorOpen(prev => ({ ...prev, [checkin.id]: false }));
+      setQueueEditedHouseholds(prev => {
+        const next = { ...prev };
+        delete next[checkin.id];
+        return next;
+      });
+      setQueueSearchResults(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(key => {
+          if (key.startsWith(`${checkin.id}-`)) {
+            delete next[key];
+          }
+        });
+        return next;
+      });
+    } catch (error) {
+      console.error("Error saving check-in household:", error);
+      setSaveMessage("Error saving Picking up for. Please try again.");
+      setTimeout(() => setSaveMessage(""), 3000);
+    }
   };
 
   const archiveRegistration = async (regId) => {
@@ -2117,67 +2284,254 @@ function AdminViewer() {
                 </tr>
               </thead>
               <tbody>
-                {sortedQueue.map((item, idx) => (
-                  <tr key={item.id}>
-                    <td className="name-cell" data-label="Name">
-                      <span className="name-primary">
-                        {getCheckinNameParts(item).fullName || 'Unknown'}
-                      </span>
-                    </td>
-                    <td data-label="ID">{item.formData?.id || item.id}</td>
-                    <td data-label="Check-In Time">
-                      {formatTimeDisplay(item.checkInTime, '')}
-                    </td>
-                    <td data-label="Picking up for">
-                      <div style={{ fontSize: '12px', maxWidth: '150px' }}>
-                        {(() => {
-                          try {
-                            // Try to parse as JSON array first
-                            if (item.household && typeof item.household === 'string' && item.household.startsWith('[')) {
-                              const householdData = JSON.parse(item.household);
-                              return householdData.map((entry, index) => (
-                                <div key={index} style={{ marginBottom: '2px', padding: '1px 3px', backgroundColor: '#f5f5f5', borderRadius: '2px', fontSize: '11px' }}>
-                                  <span style={{ fontWeight: 'bold', color: entry.type === 'registration' ? '#2196F3' : '#FF9800' }}>
-                                    {entry.type === 'registration' ? 'ID:' : 'Other:'}
-                                  </span> {entry.value}
+                {sortedQueue.map((item) => {
+                  const queueHouseholdValue = queueEditedHouseholds[item.id] ?? item.household ?? item.formData?.household;
+                  return (
+                    <tr key={item.id}>
+                      <td className="name-cell" data-label="Name">
+                        <span className="name-primary">
+                          {getCheckinNameParts(item).fullName || 'Unknown'}
+                        </span>
+                      </td>
+                      <td data-label="ID">{item.formData?.id || item.id}</td>
+                      <td data-label="Check-In Time">
+                        {formatTimeDisplay(item.checkInTime, '')}
+                      </td>
+                      <td data-label="Picking up for">
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ fontSize: '12px', maxWidth: '150px', minHeight: '18px' }}>
+                            {renderHouseholdChips(queueHouseholdValue)}
+                          </div>
+                          <div>
+                            <button
+                              onClick={() => {
+                                initializeQueueHouseholdData(item.id, item.household ?? item.formData?.household);
+                                toggleQueueHouseholdEditor(item.id);
+                              }}
+                              style={{
+                                padding: '2px 6px',
+                                fontSize: '12px',
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '3px',
+                                cursor: 'pointer'
+                              }}
+                              title="Edit Picking up for"
+                            >
+                              +
+                            </button>
+                          </div>
+                          {queueHouseholdEditorOpen[item.id] && (
+                            <>
+                              <div
+                                style={{
+                                  position: 'fixed',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  backgroundColor: 'rgba(0,0,0,0.3)',
+                                  zIndex: 9998
+                                }}
+                                onClick={() => toggleQueueHouseholdEditor(item.id)}
+                              />
+                              <div
+                                style={{
+                                  position: 'fixed',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  zIndex: 9999,
+                                  backgroundColor: 'white',
+                                  border: '2px solid #ccc',
+                                  borderRadius: '5px',
+                                  padding: '15px',
+                                  minWidth: '400px',
+                                  maxWidth: '500px',
+                                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                                  maxHeight: '80vh',
+                                  overflowY: 'auto'
+                                }}
+                              >
+                                <div style={{ marginBottom: '10px', fontWeight: 'bold', fontSize: '14px' }}>
+                                  Picking up for:
                                 </div>
-                              ));
-                            } else {
-                              // Display as simple string
-                              return item.household || '';
-                            }
-                          } catch (e) {
-                            // If parsing fails, display as simple string
-                            return item.household || '';
-                          }
-                        })()}
-                      </div>
-                    </td>
-                    <td data-label="Serve">
-                      <button
-                        onClick={() => removeCheckin(item.id)}
-                        style={{
-                          ...LARGE_SERVED_BUTTON_STYLE,
-                          backgroundColor: '#4CAF50'
-                        }}
-                        className="served-button"
-                      >
-                        Serve
-                      </button>
-                    </td>
-                    <td data-label="Actions">
-                      <div className="action-buttons">
-                        <button 
-                          onClick={() => deleteCheckin(item.id, item.name)}
-                          className="delete-button"
-                          style={{ backgroundColor: '#f44336', color: 'white' }}
+                                {[...Array(6)].map((_, index) => {
+                                  const entry = queueEditedHouseholds[item.id]?.[index] || { type: '', value: '' };
+                                  const searchKey = `${item.id}-${index}`;
+                                  const currentResults = queueSearchResults[searchKey] || [];
+
+                                  return (
+                                    <div key={index} style={{ marginBottom: '8px', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                      <select
+                                        value={entry.type}
+                                        onChange={(e) => {
+                                          const newType = e.target.value;
+                                          updateQueueHouseholdEntry(item.id, index, 'type', newType);
+                                          if (newType === 'registration') {
+                                            handleQueueRegistrationSearch(item.id, index, entry.value || '');
+                                          } else {
+                                            setQueueSearchResults(prev => ({
+                                              ...prev,
+                                              [searchKey]: []
+                                            }));
+                                          }
+                                        }}
+                                        style={{ width: '80px', fontSize: '12px' }}
+                                      >
+                                        <option value="">Select</option>
+                                        <option value="registration">Reg ID</option>
+                                        <option value="other">Other</option>
+                                      </select>
+                                      <div style={{ position: 'relative', flex: 1 }}>
+                                        <input
+                                          type="text"
+                                          value={entry.value}
+                                          onChange={(e) => {
+                                            const newValue = e.target.value;
+                                            updateQueueHouseholdEntry(item.id, index, 'value', newValue);
+                                            if (entry.type === 'registration') {
+                                              handleQueueRegistrationSearch(item.id, index, newValue);
+                                            }
+                                          }}
+                                          placeholder={entry.type === 'registration' ? 'Enter Reg ID' : 'Enter name/description'}
+                                          style={{ width: '100%', fontSize: '12px' }}
+                                        />
+                                        {entry.type === 'registration' && currentResults.length > 0 && (
+                                          <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            right: 0,
+                                            backgroundColor: 'white',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '3px',
+                                            maxHeight: '120px',
+                                            overflowY: 'auto',
+                                            zIndex: 1001
+                                          }}>
+                                            {currentResults.map((result, resultIndex) => (
+                                              <div
+                                                key={resultIndex}
+                                                onClick={() => {
+                                                  updateQueueHouseholdEntry(item.id, index, 'value', result.registrationId);
+                                                  setQueueSearchResults(prev => ({ ...prev, [searchKey]: [] }));
+                                                }}
+                                                style={{
+                                                  padding: '5px',
+                                                  cursor: 'pointer',
+                                                  borderBottom: resultIndex < currentResults.length - 1 ? '1px solid #eee' : 'none',
+                                                  fontSize: '12px',
+                                                  backgroundColor: 'white'
+                                                }}
+                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f0f0'}
+                                                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                                              >
+                                                <div><strong>{result.registrationId}</strong></div>
+                                                <div style={{ color: '#666' }}>{result.name}</div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {entry.value && (
+                                        <button
+                                          onClick={() => updateQueueHouseholdEntry(item.id, index, 'value', '')}
+                                          style={{
+                                            padding: '2px 5px',
+                                            fontSize: '10px',
+                                            backgroundColor: '#f44336',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '2px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ×
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
+                                  <button
+                                    onClick={() => toggleQueueHouseholdEditor(item.id)}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      backgroundColor: '#2196F3',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '3px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Done
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setQueueEditedHouseholds(prev => {
+                                        const next = { ...prev };
+                                        delete next[item.id];
+                                        return next;
+                                      });
+                                      setQueueSearchResults(prev => {
+                                        const next = { ...prev };
+                                        Object.keys(next).forEach(key => {
+                                          if (key.startsWith(`${item.id}-`)) {
+                                            delete next[key];
+                                          }
+                                        });
+                                        return next;
+                                      });
+                                      toggleQueueHouseholdEditor(item.id);
+                                    }}
+                                    style={{
+                                      padding: '5px 10px',
+                                      fontSize: '12px',
+                                      backgroundColor: '#757575',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '3px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td data-label="Serve">
+                        <button
+                          onClick={() => removeCheckin(item.id)}
+                          style={{
+                            ...LARGE_SERVED_BUTTON_STYLE,
+                            backgroundColor: '#4CAF50'
+                          }}
+                          className="served-button"
                         >
-                          Delete
+                          Serve
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td data-label="Actions">
+                        <div className="action-buttons">
+                          <button onClick={() => saveQueueHousehold(item)}>Save Picking up for</button>
+                          <button
+                            onClick={() => deleteCheckin(item.id, item.name)}
+                            className="delete-button"
+                            style={{ backgroundColor: '#f44336', color: 'white' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
               </div>
@@ -2215,27 +2569,7 @@ function AdminViewer() {
                   </td>
                   <td data-label="Picking up for">
                     <div style={{ fontSize: '12px', maxWidth: '150px' }}>
-                      {(() => {
-                        try {
-                          // Try to parse as JSON array first
-                          if (item.household && typeof item.household === 'string' && item.household.startsWith('[')) {
-                            const householdData = JSON.parse(item.household);
-                            return householdData.map((entry, index) => (
-                              <div key={index} style={{ marginBottom: '2px', padding: '1px 3px', backgroundColor: '#f5f5f5', borderRadius: '2px', fontSize: '11px' }}>
-                                <span style={{ fontWeight: 'bold', color: entry.type === 'registration' ? '#2196F3' : '#FF9800' }}>
-                                  {entry.type === 'registration' ? 'ID:' : 'Other:'}
-                                </span> {entry.value}
-                              </div>
-                            ));
-                          } else {
-                            // Display as simple string
-                            return item.household || '';
-                          }
-                        } catch (e) {
-                          // If parsing fails, display as simple string
-                          return item.household || '';
-                        }
-                      })()}
+                      {renderHouseholdChips(item.household ?? item.formData?.household)}
                     </div>
                   </td>
                 </tr>
