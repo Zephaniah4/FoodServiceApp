@@ -1,6 +1,6 @@
 {
-  "short_name": "FSA Garland",
-  "name": "FSA Garland",
+  "short_name": "FSA Rowlett",
+  "name": "FSA Rowlett",
   "icons": [
     {
       "src": "app.png",
@@ -8,12 +8,12 @@
       "type": "image/png"
     },
     {
-      "src": "FA Icon Garland.png",
+      "src": "FSA Rowlett Icon.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "FA Icon Garland.png",
+      "src": "FSA Rowlett Icon.png",
       "type": "image/png",
       "sizes": "512x512"
     }
