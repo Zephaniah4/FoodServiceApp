@@ -1,8 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import "./FormStyles_Green.css";
+import { getCurrentLocationConfig } from "./locationConfig";
 
 export default function Home() {
+  const locationConfig = getCurrentLocationConfig();
+
   return (
     <div className="home-hero">
       <div className="home-hero-content">
@@ -12,9 +15,9 @@ export default function Home() {
           <img src="/ntfb.jpg" alt="North Texas Food Bank" className="home-logo" />
           <img src="/ccd.png" alt="Catholic Charities Dallas" className="home-logo" />
         </div>
-        <h1 className="home-title">Welcome to Food Service App</h1>
+        <h1 className="home-title">{locationConfig.welcomeTitle}</h1>
         <p className="home-subtitle">
-          Streamlining registrations and check-ins for your community food service.
+          {locationConfig.welcomeSubtitle}
         </p>
         <div className="home-actions">
           <Link to="/register" className="home-btn">Register</Link>

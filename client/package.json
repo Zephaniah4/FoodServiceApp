@@ -14,7 +14,7 @@
     "axios": "^1.9.0",
     "dayjs": "^1.11.13",
     "firebase": "^11.9.1",
-    "i18next": "^25.2.1",
+    "i18next": "23.16.8",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
     "jspdf": "^3.0.1",
@@ -24,7 +24,7 @@
     "react-datepicker": "^8.4.0",
     "react-dom": "^19.1.0",
     "react-firebase-hooks": "^5.1.1",
-    "react-i18next": "^15.5.2",
+    "react-i18next": "15.3.0",
     "react-input-mask": "^2.0.4",
     "react-router-dom": "^7.6.2",
     "react-scripts": "^5.0.1",
@@ -33,7 +33,13 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:plano": "cross-env REACT_APP_LOCATION=planoDallas react-scripts start",
+    "start:garland": "cross-env REACT_APP_LOCATION=garland react-scripts start",
+    "start:rowlett": "cross-env REACT_APP_LOCATION=rowlett react-scripts start",
     "build": "react-scripts build",
+    "build:plano": "cross-env REACT_APP_LOCATION=planoDallas react-scripts build",
+    "build:garland": "cross-env REACT_APP_LOCATION=garland react-scripts build",
+    "build:rowlett": "cross-env REACT_APP_LOCATION=rowlett react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -57,7 +63,8 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",
+    "cross-env": "^7.0.3",
     "source-map-loader": "^5.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "4.9.5"
   }
 }

@@ -7,9 +7,11 @@ import './i18n';
 import AdminDashboard from './AdminDashboard';
 import ErrorBoundary from "./ErrorBoundary";
 import Home from './Home';
+import { getCurrentLocationConfig } from './locationConfig';
 
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const locationConfig = getCurrentLocationConfig();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -25,7 +27,7 @@ function App() {
         <div className="app-container">
           <header className="header">
             <div className="header-content">
-              <h1>Food Service App</h1>
+              <h1>{locationConfig.appTitle}</h1>
               <button 
                 className={`mobile-menu-toggle ${mobileMenuOpen ? 'active' : ''}`}
                 onClick={toggleMobileMenu}
