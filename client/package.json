@@ -32,14 +32,15 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "prepare:branding": "node scripts/prepare-branding.js",
     "start": "react-scripts start",
-    "start:plano": "cross-env REACT_APP_LOCATION=planoDallas react-scripts start",
-    "start:garland": "cross-env REACT_APP_LOCATION=garland react-scripts start",
-    "start:rowlett": "cross-env REACT_APP_LOCATION=rowlett react-scripts start",
+    "start:plano": "cross-env REACT_APP_LOCATION=planoDallas node scripts/prepare-branding.js && cross-env REACT_APP_LOCATION=planoDallas react-scripts start",
+    "start:garland": "cross-env REACT_APP_LOCATION=garland node scripts/prepare-branding.js && cross-env REACT_APP_LOCATION=garland react-scripts start",
+    "start:rowlett": "cross-env REACT_APP_LOCATION=rowlett node scripts/prepare-branding.js && cross-env REACT_APP_LOCATION=rowlett react-scripts start",
     "build": "react-scripts build",
-    "build:plano": "cross-env REACT_APP_LOCATION=planoDallas react-scripts build",
-    "build:garland": "cross-env REACT_APP_LOCATION=garland react-scripts build",
-    "build:rowlett": "cross-env REACT_APP_LOCATION=rowlett react-scripts build",
+    "build:plano": "cross-env REACT_APP_LOCATION=planoDallas node scripts/prepare-branding.js && cross-env REACT_APP_LOCATION=planoDallas react-scripts build",
+    "build:garland": "cross-env REACT_APP_LOCATION=garland node scripts/prepare-branding.js && cross-env REACT_APP_LOCATION=garland react-scripts build",
+    "build:rowlett": "cross-env REACT_APP_LOCATION=rowlett node scripts/prepare-branding.js && cross-env REACT_APP_LOCATION=rowlett react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import RegistrationForm from './RegistrationForm';
 import CheckInForm from './CheckInForm';
@@ -12,6 +12,10 @@ import { getCurrentLocationConfig } from './locationConfig';
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const locationConfig = getCurrentLocationConfig();
+
+  useEffect(() => {
+    document.title = locationConfig.appTitle;
+  }, [locationConfig.appTitle]);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
